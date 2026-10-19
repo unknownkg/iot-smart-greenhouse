@@ -87,7 +87,7 @@ export function validateAlerts(state) {
   if (!Array.isArray(state.alerts) || state.alerts.length > ALERT_LIMIT) return false;
   const ids = new Set(); const active = new Set();
   for (const alert of state.alerts) {
-    if (!alert || !/^ALERT-[1-9]\d*$/.test(alert.id) || ids.has(alert.id) || Number(alert.id.slice(6)) >= state.audit.nextId
+    if (!alert || typeof alert.id !== 'string' || !/^ALERT-[1-9]\d*$/.test(alert.id) || ids.has(alert.id) || Number(alert.id.slice(6)) >= state.audit.nextId
       || !state.zones.some((z) => z.id === alert.zoneId) || !['warning', 'critical'].includes(alert.severity)
       || !['open', 'resolved'].includes(alert.status) || !auditDate(alert.createdAt)
       || (alert.status === 'open' ? alert.resolvedAt !== null : !auditDate(alert.resolvedAt) || alert.resolvedAt < alert.createdAt)

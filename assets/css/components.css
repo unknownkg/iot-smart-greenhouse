@@ -26,8 +26,8 @@
 .zone-head { flex-wrap: wrap; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 18px 18px 12px; }
 .zone-id { color: var(--muted); font-size: 12px; letter-spacing: .7px; margin-bottom: 4px; }
 .zone-visual { flex-wrap: wrap; margin: 0 18px 14px; padding: 13px 17px; min-height: 112px; display: flex; align-items: center; justify-content: space-between; gap: 14px; border-radius: 7px; border: 1px solid var(--green-border); background: var(--green-soft); color: var(--green); }
-.zone-card:nth-child(2) .zone-visual { background-color: var(--info-soft); border-color: var(--info-border); color: var(--cyan); }
-.zone-card:nth-child(3) .zone-visual { background-color: rgb(198 214 148 / 7%); border-color: rgb(198 214 148 / 24%); color: #c6d694; }
+.zone-card[data-zone-id='ZONE-02'] .zone-visual { background-color: var(--info-soft); border-color: var(--info-border); color: var(--cyan); }
+.zone-card[data-zone-id='ZONE-03'] .zone-visual { background-color: rgb(198 214 148 / 7%); border-color: rgb(198 214 148 / 24%); color: #c6d694; }
 .zone-visual .greenhouse { width: 92px; height: 78px; fill: none; stroke: currentColor; stroke-width: 1.1; opacity: .8; }
 .zone-visual small { display: block; font-size: 12px; letter-spacing: .2px; }
 .zone-visual > div { min-width: 0; overflow-wrap: anywhere; }
@@ -136,6 +136,8 @@ tbody tr:hover td:not(.table-empty) { background: rgb(255 255 255 / 3%); }
 .analytics-list li { min-width: 0; overflow-wrap: anywhere; }
 .analytics-list p { color: var(--muted); font-size: 13px; margin-top: 5px; }
 .analytics-list .badge { margin-right: 7px; }
+.notifications-link { white-space: normal; text-align: center; min-height: 32px; }
+.notifications-link:hover { border-color: currentColor; text-decoration: underline; text-underline-offset: 3px; }
 .analytics-risk .risk-placeholder { flex-wrap: wrap; }
 .analytics-risk [data-risk-level='critical'] .risk-ring { color: var(--red); border-color: var(--red); }
 .analytics-risk [data-risk-level='high'] .risk-ring, .analytics-risk [data-risk-level='moderate'] .risk-ring { color: var(--yellow); border-color: var(--yellow); }

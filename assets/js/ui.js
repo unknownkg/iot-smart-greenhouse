@@ -19,7 +19,7 @@ export function initNavigation() {
 
   toggle.addEventListener('click', () => setOpen(!isOpen()));
   backdrop.addEventListener('click', () => setOpen(false, true));
-  desktop.addEventListener('change', () => setOpen(false));
+  desktop.addEventListener('change', () => setOpen(false, !desktop.matches && sidebar.contains(document.activeElement)));
   document.addEventListener('keydown', (event) => {
     if (!isOpen()) return;
     if (event.key === 'Escape') setOpen(false, true);

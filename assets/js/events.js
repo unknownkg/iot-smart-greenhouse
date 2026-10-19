@@ -53,7 +53,7 @@ export function validateJournal(state) {
     || !Array.isArray(state.events) || state.events.length > EVENT_LIMIT) return false;
   const ids = new Set();
   for (const event of state.events) {
-    if (!event || !/^EVENT-[1-9]\d*$/.test(event.id) || ids.has(event.id) || Number(event.id.slice(6)) >= state.audit.nextId
+    if (!event || typeof event.id !== 'string' || !/^EVENT-[1-9]\d*$/.test(event.id) || ids.has(event.id) || Number(event.id.slice(6)) >= state.audit.nextId
       || !auditDate(event.timestamp) || !(event.zoneId === null || state.zones.some((z) => z.id === event.zoneId))
       || !EVENT_SOURCES.includes(event.source) || !EVENT_TYPES.includes(event.type)
       || !(event.objectId === null || auditText(event.objectId, 64)) || !auditText(event.objectName, 120)

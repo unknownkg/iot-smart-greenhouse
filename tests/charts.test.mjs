@@ -119,6 +119,24 @@ test('a Chart instance without a usable canvas context is released and reported 
   assert.equal(destroyed, 1);
 });
 
+test('a constructor that registers its canvas before throwing cannot leak a Chart instance', async () => {
+  const registered = new Map();
+  let destroyed = 0;
+  class Partial {
+    static version = '4.5.1';
+    static getChart(canvas) { return registered.get(canvas); }
+    constructor(canvas) { this.canvas = canvas; registered.set(canvas, this); throw new Error('initialization failed after registration'); }
+    destroy() { registered.delete(this.canvas); destroyed++; }
+  }
+  const b = boundary(() => Promise.resolve(Partial));
+  for (const zone of ['ZONE-01', 'ZONE-02']) {
+    await assert.doesNotReject(() => b.charts.render(data(), zone));
+    assert.equal(b.status.at(-1)[0], 'error');
+    assert.equal(registered.size, 0);
+  }
+  assert.equal(destroyed, 2);
+});
+
 test('vendored official UMD actually loads version4.5.1 and matches recorded hash and license', () => {
   const bytes = readFileSync(new URL('../assets/vendor/chartjs/chart.umd.min.js', import.meta.url));
   const provenance = JSON.parse(readFileSync(new URL('../assets/vendor/chartjs/SOURCE.json', import.meta.url), 'utf8'));
@@ -127,4 +145,37 @@ test('vendored official UMD actually loads version4.5.1 and matches recorded has
   assert.equal(scope.Chart.version, '4.5.1');
   const license = readFileSync(new URL('../assets/vendor/chartjs/LICENSE.md', import.meta.url), 'utf8');
   assert.match(license, /MIT License/); assert.match(license, /Copyright/);
+});
+
+test('history time labels keep readable spacing when the actual Chart.js layout becomes narrow', () => {
+  const scope = {};
+  vm.runInNewContext(readFileSync(new URL('../assets/vendor/chartjs/chart.umd.min.js', import.meta.url), 'utf8'), scope);
+  const state = data();
+  state.history = Array.from({ length: 240 }, (_, index) => ({
+    ...state.history[0], timestamp: new Date(Date.parse(FIRST) + index * 5000).toISOString(),
+  }));
+  const before = structuredClone(state);
+  // Only canvas drawing/font metrics are substituted; the pinned UMD performs layout and autoSkip.
+  for (const width of [298, 305, 467, 743]) {
+    for (const config of chartConfigurations(state, 'ZONE-01').filter((item) => item.type === 'line')) {
+      const canvas = { width, height: 260 };
+      const measureText = (text) => ({ width: String(text).length * 6.5 });
+      const context = new Proxy({ canvas, measureText, getLineDash: () => [] }, {
+        get(target, key) { return key in target ? target[key] : () => {}; },
+      });
+      canvas.getContext = () => context;
+      const chart = new scope.Chart(canvas, { ...config, options: { ...config.options, responsive: false } });
+      try {
+        const axis = chart.scales.x;
+        assert.ok(axis.ticks.length >= 2, `${config.key}, ${width}px: time axis must remain useful`);
+        for (let i = 1; i < axis.ticks.length; i++) {
+          const gap = axis.getPixelForTick(i) - axis.getPixelForTick(i - 1)
+            - (measureText(axis.ticks[i].label).width + measureText(axis.ticks[i - 1].label).width) / 2;
+          assert.ok(gap >= 16, `${config.key}, ${width}px: adjacent time labels only ${gap.toFixed(1)}px apart`);
+        }
+        assert.equal(chart.data.datasets[0].data.length, 240, 'skip labels, never measurements');
+      } finally { chart.destroy(); }
+    }
+  }
+  assert.deepEqual(state, before);
 });

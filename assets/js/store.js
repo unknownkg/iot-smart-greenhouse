@@ -173,7 +173,7 @@ export function createStore(options = {}) {
     },
     // Validated transaction used by the per-zone settings form.
     updateZoneSettings(zoneId, settings) {
-      if (!Object.hasOwn(state.settings.zones, zoneId)) return { ok: false, issue: 'unknown-zone' };
+      if (typeof zoneId !== 'string' || !Object.hasOwn(state.settings.zones, zoneId)) return { ok: false, issue: 'unknown-zone' };
       const next = snapshot();
       try { next.settings.zones[zoneId] = structuredClone(settings); }
       catch { return { ok: false, issue: 'invalid-settings' }; }
@@ -191,6 +191,14 @@ export function createStore(options = {}) {
       return commit(next, { source: 'operator', type: paused ? 'SIMULATION_PAUSED' : 'SIMULATION_RESUMED', objectName: 'Учебный симулятор',
         previousState: state.simulation.paused ? 'paused' : 'running', newState: paused ? 'paused' : 'running',
         message: paused ? 'Симуляция поставлена на паузу.' : 'Симуляция продолжена.', reason: 'Явная команда управления симуляцией.' });
+    },
+    setSimulationIntervalMs(interval) {
+      if (!Number.isInteger(interval) || interval < 3000 || interval > 10000) return { ok: false, issue: 'invalid-interval' };
+      if (state.settings.simulationIntervalMs === interval) return { ok: true, persisted: status.persistent };
+      const next = snapshot(); next.settings.simulationIntervalMs = interval;
+      return commit(next, { source: 'settings', type: 'SETTINGS_CHANGED', objectName: 'Интервал симуляции',
+        previousState: `${state.settings.simulationIntervalMs / 1000} с`, newState: `${interval / 1000} с`,
+        message: 'Изменён интервал учебной симуляции.', reason: 'Скорость применена без нового измерения; состояние паузы сохранено.' });
     },
     applyScenario(zoneId, scenarioId) {
       const input = buildScenarioReadings(state, zoneId, scenarioId);
@@ -220,9 +228,13 @@ export function createStore(options = {}) {
         const sensor = next.sensors.find((item) => item.id === measurement.id);
         const range = SENSOR_TYPES.find((item) => item.type === sensor.type);
         const automatic = next.zones.find((zone) => zone.id === sensor.zoneId).mode === 'auto';
-        if ((sensor.type === 'waterLevel' || automatic) && (!Number.isFinite(measurement.value) || measurement.value < range.min || measurement.value > range.max)) {
-          sensor.status = 'offline';
-          continue;
+        if (!Number.isFinite(measurement.value) || measurement.value < range.min || measurement.value > range.max) {
+          if (sensor.type === 'waterLevel' || automatic) {
+            sensor.status = 'offline';
+            continue;
+          }
+          // Reject a Manual frame before domain comparisons can coerce an invalid value.
+          return { ok: false, issue: 'invalid-state', ...preserveMeasurementSafety(measurements, timestamp) };
         }
         sensor.value = measurement.value;
         sensor.lastUpdatedAt = timestamp;
@@ -242,11 +254,12 @@ export function createStore(options = {}) {
       if (result.state) {
         state = result.state;
         status = result.status;
-        writeBlocked = false;
+        writeBlocked = ['invalid-json', 'incompatible-schema', 'invalid-state', 'read-failed'].includes(status.issue);
         checkLoadedSafety();
         notify();
       }
-      return { ok: result.ok, issue: result.issue ?? result.status?.issue ?? null };
+      return { ok: result.ok, applied: Boolean(result.state), persisted: result.ok && status.persistent,
+        issue: result.issue ?? result.status?.issue ?? null };
     },
   });
   return api;

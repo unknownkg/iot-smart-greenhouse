@@ -3,9 +3,11 @@ import { deviceBlockReason } from './safety.js';
 import { evaluateAutomation } from './automation.js';
 import { SCENARIOS } from './scenarios.js';
 import { bindSettingsForm } from './settings-form.js';
-import { bindMonitoringViews, recentEvents } from './monitoring-views.js';
+import { bindMonitoringViews, recentEvents, recentAlerts, renderNotifications } from './monitoring-views.js';
 import { analyzeZone, RISK_LEVELS } from './analytics.js';
 import { bindAnalytics } from './analytics-views.js';
+import { filterSensors, filterZones } from './filters.js';
+import { bindApplicationSettings } from './application-settings.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -55,8 +57,10 @@ function kpiCards(state) {
   }).join('');
 }
 
-export function zoneCards(state, detailed = false, storageStatus = {}) {
-  return state.zones.map((zone) => {
+export function zoneCards(state, detailed = false, storageStatus = {}, query = '') {
+  const zones = filterZones(state, query);
+  if (!zones.length) return '<p class="notice">Нет зон по этому запросу. Измените поиск; обязательные зоны сохранены.</p>';
+  return zones.map((zone) => {
     const values = readings(state, zone.id);
     const types = detailed ? SENSOR_TYPES : SENSOR_TYPES.filter((sensor) => ['temperature', 'humidity', 'waterLevel'].includes(sensor.type));
     const metrics = types.map((type) => `<div><dt>${type.name}</dt><dd class="mono">${reading(values[type.type])}</dd></div>`).join('');
@@ -64,7 +68,7 @@ export function zoneCards(state, detailed = false, storageStatus = {}) {
     const on = state.devices.filter((device) => device.zoneId === zone.id && device.isOn).length;
     const activeAlerts = state.alerts.filter((a) => a.zoneId === zone.id && a.status === 'open');
     const risk = analyzeZone(state, zone.id, storageStatus);
-    return `<article class="zone-card"><div class="zone-head"><div>
+    return `<article class="zone-card" data-zone-id="${escape(zone.id)}"><div class="zone-head"><div>
       <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Симуляция', 'cyan')}</div>
       <div class="zone-visual">${icon('greenhouse', 'greenhouse')}<div><small>Влажность почвы</small>
       <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Учебное измерение</span></div></div>
@@ -73,8 +77,10 @@ export function zoneCards(state, detailed = false, storageStatus = {}) {
   }).join('');
 }
 
-export function sensorRows(state, zoneId) {
-  return state.sensors.filter((sensor) => !zoneId || sensor.zoneId === zoneId).map((sensor) => {
+export function sensorRows(state, zoneId, filters = {}) {
+  const sensors = filterSensors(state, { ...filters, zoneId: zoneId ?? filters.zoneId });
+  if (!sensors.length) return '<tr><td class="table-empty" colspan="6">Нет датчиков по выбранным фильтрам. Измените поиск, зону или статус.</td></tr>';
+  return sensors.map((sensor) => {
     const type = SENSOR_TYPES.find((item) => item.type === sensor.type);
     const zone = state.zones.find((item) => item.id === sensor.zoneId);
     return `<tr><td>${type.label}<br><small class="muted mono">${escape(sensor.id)}</small></td>
@@ -154,6 +160,14 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
     });
   }
   const settingsForm = bindSettingsForm(store, documentRoot);
+  const applicationSettings = bindApplicationSettings(store, documentRoot, simulator, { onReset: () => settingsForm?.reset() });
+  const sensorSearch = documentRoot.querySelector('[data-sensor-search]');
+  const sensorZone = documentRoot.querySelector('[data-sensor-zone]');
+  const sensorStatus = documentRoot.querySelector('[data-sensor-status]');
+  const zoneSearch = documentRoot.querySelector('[data-zone-search]');
+  if (sensorZone) sensorZone.innerHTML = '<option value="">Все зоны</option>' + initial.zones.map((zone) => `<option value="${escape(zone.id)}">${escape(zone.name)}</option>`).join('');
+  for (const input of [sensorSearch, zoneSearch].filter(Boolean)) input.addEventListener('input', render);
+  for (const select of [sensorZone, sensorStatus].filter(Boolean)) select.addEventListener('change', render);
   const monitoring = bindMonitoringViews(store, documentRoot);
   const analytics = bindAnalytics(store, documentRoot);
   const storageNotice = documentRoot.createElement('div');
@@ -187,6 +201,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
     storageNotice.textContent = `${storageMessage(state, status)}${status.safetyMessage ? ` Защита: ${status.safetyMessage}` : ''}`;
     const indicator = documentRoot.querySelector('[data-mode-indicator]');
     if (indicator) indicator.textContent = modeLabel(state);
+    renderNotifications(state, documentRoot.querySelector('[data-notifications]'));
     if (simulationPanel) {
       const paused = state.simulation.paused;
       simulationPanel.querySelector('[data-sim-status]').textContent = paused ? 'На паузе' : 'Работает';
@@ -200,11 +215,12 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       fill('[data-zone-cards]', zoneCards(state, false, status));
       fill('[data-device-summary]', deviceSummary(state));
       fill('[data-recent-events]', recentEvents(state));
+      fill('[data-recent-alerts]', recentAlerts(state));
     } else if (page === 'zones') {
-      fill('[data-zone-cards]', zoneCards(state, true, status));
+      fill('[data-zone-cards]', zoneCards(state, true, status, zoneSearch?.value ?? ''));
       fill('[data-sensor-rows]', sensorRows(state, selectedZone));
     } else if (page === 'sensors') {
-      fill('[data-sensor-rows]', sensorRows(state));
+      fill('[data-sensor-rows]', sensorRows(state, undefined, { query: sensorSearch?.value ?? '', zoneId: sensorZone?.value ?? '', status: sensorStatus?.value ?? '' }));
     } else if (page === 'control') {
       const focusedDevice = documentRoot.activeElement?.dataset?.deviceCommand;
       fill('[data-device-cards]', deviceCards(state, selectedZone));
@@ -218,6 +234,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       documentRoot.querySelector('[data-zone-mode-summary]').textContent = `${zone.name}: ${zone.mode === 'auto' ? 'Auto — правила применяются по порогам, ручные команды заблокированы.' : 'Manual — устройствами управляет оператор.'}`;
     } else if (page === 'settings') {
       settingsForm.render(selectedZone);
+      applicationSettings?.render();
     } else if (page === 'alerts' || page === 'event-log') {
       monitoring.render();
     } else if (page === 'analytics') {

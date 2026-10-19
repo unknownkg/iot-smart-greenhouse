@@ -25,6 +25,27 @@ function fixture(changes = {}) {
   };
 }
 
+for (const collection of ['events', 'alerts']) {
+  for (const shape of ['array', 'object']) {
+    test(`${collection} rejects ${shape} audit IDs without throwing or overwriting the saved snapshot`, () => {
+      const f = fixture({ waterLevel: 10 }); const data = f.store.getState();
+      const id = data[collection][0].id;
+      data[collection][0].id = shape === 'array' ? [id] : { toString: null };
+      let validation;
+      assert.doesNotThrow(() => { validation = validateState(data); });
+      assert.equal(validation.ok, false);
+      const raw = JSON.stringify(data); f.disk.setItem(STORAGE_KEY, raw);
+      let loaded;
+      assert.doesNotThrow(() => { loaded = loadState({ storage: f.disk, now: f.now }); });
+      assert.equal(loaded.status.issue, 'invalid-state');
+      const recovered = createStore({ storage: f.disk, now: f.now });
+      assert.equal(recovered.getStatus().issue, 'invalid-state');
+      assert.equal(recovered.getState().simulation.paused, true);
+      assert.equal(f.disk.getItem(STORAGE_KEY), raw);
+    });
+  }
+}
+
 for (const [input, value, type, severity] of [
   ['temperature', 19, 'temperature-low', 'warning'], ['temperature', 29, 'temperature-high', 'warning'],
   ['humidity', 49, 'humidity-low', 'warning'], ['humidity', 81, 'humidity-high', 'warning'],
@@ -87,6 +108,25 @@ test('a rejected invalid Manual input is explicitly unavailable and creates an a
   const fault = f.alerts().find((a) => a.type === 'sensor-unavailable'); assert.ok(fault);
   assert.equal(fault.sensorId, `${ZONE}-S-light`); assert.equal(fault.value, null);
   assert.equal(f.store.getState().history.length, 0); assert.equal(validateState(f.store.getState()).ok, true);
+});
+
+test('malformed Manual readings reject the frame without coercion and still apply fresh water protection', () => {
+  for (const type of ['temperature', 'humidity', 'soil', 'light', 'co2']) {
+    const f = fixture(); const before = f.store.getState();
+    assert.equal(f.store.setDeviceState(f.device('pump').id, true).ok, true);
+    let result;
+    assert.doesNotThrow(() => { result = f.measure({ [type]: { toString: null }, waterLevel: 10 }); });
+    assert.equal(result.ok, false);
+    const next = f.store.getState();
+    const sensor = next.sensors.find((s) => s.zoneId === ZONE && s.type === type);
+    assert.equal(sensor.status, 'offline');
+    assert.equal(sensor.value, before.sensors.find((s) => s.id === sensor.id).value);
+    assert.equal(sensor.lastUpdatedAt, FIRST);
+    assert.equal(f.device('pump').isOn, false);
+    assert.equal(next.history.length, before.history.length);
+    assert.equal(next.sensors.find((s) => s.zoneId === ZONE && s.type === 'waterLevel').value, 10);
+    assert.equal(validateState(next).ok, true);
+  }
 });
 
 test('scenarios A/B/C create real alerts and sources, then retain resolved history', () => {

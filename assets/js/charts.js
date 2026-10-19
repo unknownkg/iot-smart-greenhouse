@@ -40,6 +40,8 @@ export function chartConfigurations(state, zoneId) {
       scales: {
         x: { type: 'category', title: { display: true, text: bar ? 'Зона' : 'Время измерения · местное', color: '#96a2b4' },
           grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#96a2b4', maxTicksLimit: bar ? 3 : 5, maxRotation: 0,
+            // Chart.js recalculates autoSkip on resize; only labels are skipped, never samples.
+            ...(bar ? {} : { autoSkip: true, autoSkipPadding: 48 }),
             callback(value) { const label = this.getLabelForValue(value); return bar ? label : timestampLabel(label).split(' ').at(-1); } } },
         y: { title: { display: true, text: series.unit, color: '#96a2b4' }, grid: { color: 'rgba(255,255,255,0.08)' },
           ticks: { color: '#96a2b4' }, ...(series.unit === '%' ? { min: 0, max: 100 } : {}) },
@@ -96,7 +98,14 @@ export function createCharts(root, { load = () => loadChart(root.ownerDocument ?
           else {
             const canvas = root.querySelector(`[data-chart="${key}"]`);
             if (!canvas) throw new Error('Chart canvas not found');
-            const created = new Chart(canvas, config);
+            let created;
+            try { created = new Chart(canvas, config); }
+            catch (error) {
+              // Initialization may throw after Chart.js has already claimed the canvas.
+              const partial = Chart.getChart?.(canvas);
+              if (partial) instances.set(key, partial);
+              throw error;
+            }
             instances.set(key, created);
             // Chart.js can return a failed instance rather than throw when canvas has no context.
             if (created.ctx === null || created.canvas === null) throw new Error('Canvas context unavailable');

@@ -19,6 +19,7 @@ export function createSettingsEditor(store) {
       drafts.set(zoneId, { ...(drafts.get(zoneId) ?? fromStore(zoneId)), [path]: text });
     },
     discard(zoneId) { drafts.delete(zoneId); },
+    clear() { drafts.clear(); },
     save(zoneId) {
       const values = drafts.get(zoneId) ?? fromStore(zoneId);
       const settings = store.getState().settings.zones[zoneId];
@@ -97,5 +98,9 @@ export function bindSettingsForm(store, root) {
     for (const input of fields) { input.removeAttribute('aria-invalid'); errors.get(input.dataset.setting).hidden = true; }
     render(zoneId); show('Черновик отменён. Показаны действующие пороги.');
   });
-  return { render };
+  return { render, reset() {
+    editor.clear();
+    for (const input of fields) { input.removeAttribute('aria-invalid'); errors.get(input.dataset.setting).hidden = true; }
+    render(zoneId); show('Демонстрационные данные сброшены; показаны начальные пороги.');
+  } };
 }

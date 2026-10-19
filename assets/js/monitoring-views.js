@@ -55,6 +55,32 @@ export function recentEvents(state, limit = 5) {
   }).join('')}</div>`;
 }
 
+export function recentAlerts(state, limit = 3) {
+  const resolved = state.alerts.filter((a) => a.status === 'resolved')
+    .sort((a, b) => b.resolvedAt.localeCompare(a.resolvedAt) || Number(b.id.slice(6)) - Number(a.id.slice(6)));
+  const alerts = [...filterAlerts(state, { status: 'open' }), ...resolved].slice(0, limit);
+  if (!alerts.length) return '<p class="helper">Предупреждений пока нет. Здесь будут реальные Alerts, отдельно от журнала событий.</p>';
+  return `<div class="event-feed">${alerts.map((alert) => `<article class="event-item"><div>
+    ${badge(alert.severity === 'critical' ? 'Critical' : 'Warning', alert.severity === 'critical' ? 'red' : 'yellow')}
+    ${badge(alert.status === 'open' ? 'Open · активно' : 'Resolved · устранено', alert.status === 'open' ? 'yellow' : 'green')}
+    <strong>${escape(zoneName(state, alert.zoneId))}</strong><small class="muted">${time(alert.resolvedAt ?? alert.createdAt)}</small></div>
+    <p>${escape(alert.message)}</p><small class="muted">${escape(alert.reason)}</small></article>`).join('')}</div>`;
+}
+
+export function notificationModel(state) {
+  const open = state.alerts.filter((alert) => alert.status === 'open');
+  const critical = open.filter((alert) => alert.severity === 'critical').length;
+  return { count: open.length, critical, warning: open.length - critical, level: critical ? 'critical' : open.length ? 'warning' : 'normal' };
+}
+
+export function renderNotifications(state, link) {
+  if (!link) return;
+  const model = notificationModel(state);
+  link.className = `badge notifications-link badge-${model.critical ? 'red' : model.count ? 'yellow' : 'green'}`;
+  link.textContent = `Уведомления · ${model.count}`;
+  link.setAttribute('aria-label', `Активные предупреждения: ${model.count}. Critical: ${model.critical}; Warning: ${model.warning}. Открыть страницу предупреждений.`);
+}
+
 export function bindMonitoringViews(store, root) {
   const alertBody = root.querySelector('[data-alert-rows]');
   const eventBody = root.querySelector('[data-event-rows]');

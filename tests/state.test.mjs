@@ -17,6 +17,18 @@ function memoryStorage() {
 }
 const options = (storage, time = FIRST) => ({ storage, now: () => time });
 
+test('settings reject a non-string zone identifier without coercion, writes or state changes', () => {
+  const storage = memoryStorage(); const store = createStore(options(storage));
+  const before = store.getState(); const raw = storage.getItem(STORAGE_KEY);
+  for (const id of [{ toString: null }, ['ZONE-01'], null, undefined]) {
+    let result;
+    assert.doesNotThrow(() => { result = store.updateZoneSettings(id, {}); });
+    assert.equal(result.ok, false); assert.equal(result.issue, 'unknown-zone');
+    assert.deepEqual(store.getState(), before);
+    assert.equal(storage.getItem(STORAGE_KEY), raw);
+  }
+});
+
 test('initial model has exactly three named zones and six sensor/device types per zone', () => {
   const state = createInitialState(FIRST);
   assert.deepEqual(state.zones.map(({ id, name }) => [id, name]), [
