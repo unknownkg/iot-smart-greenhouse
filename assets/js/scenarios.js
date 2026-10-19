@@ -1,4 +1,4 @@
-import { createInitialState, SENSOR_TYPES } from './data.js';
+import { createInitialState, SENSOR_TYPES, humidityRecovery } from './data.js';
 
 export const SCENARIOS = Object.freeze([
   { id: 'dry-soil', name: 'Сухая почва', input: 'soil' },
@@ -24,7 +24,8 @@ export function buildScenarioReadings(state, zoneId, scenarioId) {
   // Stable release conditions make each demonstration independent of previous latches.
   values.temperature = Math.min(t.temperature.max - gap, Math.max(t.temperature.min + gap, values.temperature));
   values.soil = t.soil.max;
-  values.humidity = Math.max(values.humidity, Math.min(t.humidity.max, t.humidity.min + 3));
+  const humidityBand = humidityRecovery(t.humidity);
+  values.humidity = Math.min(humidityBand.high, Math.max(humidityBand.low, values.humidity));
   values.light = Math.max(values.light, Math.min(200000, t.light.min + 600));
   values.co2 = Math.min(values.co2, Math.max(0, t.co2.max - 100));
   values.waterLevel = Math.max(values.waterLevel, Math.min(100, t.waterLevel.critical + 10));

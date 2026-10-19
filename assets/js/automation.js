@@ -1,4 +1,5 @@
 import { sensorBlockReason, pumpBlockReason } from './safety.js';
+import { humidityRecovery } from './data.js';
 
 // Pure decisions for one zone. Store owns all mutations, safety and persistence.
 export function evaluateAutomation(state, zoneId) {
@@ -25,7 +26,7 @@ export function evaluateAutomation(state, zoneId) {
   const lightRelease = Math.min(200000, settings.light.min + 600);
   decide('growLight', 'light', values.light < settings.light.min, values.light >= lightRelease,
     `свет ${values.light} lux; ON < ${settings.light.min}, OFF ≥ ${lightRelease}`);
-  const humidityRelease = Math.min(settings.humidity.max, settings.humidity.min + 3);
+  const humidityRelease = humidityRecovery(settings.humidity).low;
   decide('humidifier', 'humidity', values.humidity < settings.humidity.min, values.humidity >= humidityRelease,
     `влажность ${values.humidity}%; ON < ${settings.humidity.min}%, OFF ≥ ${humidityRelease}%`);
   const co2Release = Math.max(0, settings.co2.max - 100);

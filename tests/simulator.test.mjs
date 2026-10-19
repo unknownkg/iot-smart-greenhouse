@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createInitialState, SENSOR_TYPES, HISTORY_LIMIT } from '../assets/js/data.js';
+import { createInitialState, SENSOR_TYPES, HISTORY_LIMIT, SCHEMA_VERSION } from '../assets/js/data.js';
 import { createStore } from '../assets/js/store.js';
 import { STORAGE_KEY, loadState, validateState } from '../assets/js/storage.js';
 import { simulateReadings, createSimulator } from '../assets/js/simulator.js';
@@ -137,14 +137,14 @@ test('stage 2 migration retains saved readings/settings/device metadata with no 
   legacy.settings.zones['ZONE-02'].soil.min = 40;
   disk.setItem(STORAGE_KEY, JSON.stringify(legacy));
   const result = loadState({ storage: disk, now: () => '2026-10-19T12:00:00.000Z' });
-  assert.equal(result.state.schemaVersion, 2);
+  assert.equal(result.state.schemaVersion, SCHEMA_VERSION);
   assert.equal(result.status.persistent, true);
   assert.deepEqual(result.state.sensors, legacy.sensors);
   assert.deepEqual(result.state.devices, legacy.devices);
   assert.deepEqual(result.state.settings, legacy.settings);
   assert.equal(result.state.history.length, 0);
   assert.equal(result.state.simulation.paused, false);
-  assert.equal(JSON.parse(disk.getItem(STORAGE_KEY)).schemaVersion, 2);
+  assert.equal(JSON.parse(disk.getItem(STORAGE_KEY)).schemaVersion, SCHEMA_VERSION);
 });
 
 test('failed migration write retains the original stage 2 record and exposes a valid memory model', () => {
@@ -155,7 +155,7 @@ test('failed migration write retains the original stage 2 record and exposes a v
   const raw = disk.getItem(STORAGE_KEY);
   disk.setItem = () => { throw new Error('quota'); };
   const result = loadState({ storage: disk, now: () => FIRST });
-  assert.equal(result.state.schemaVersion, 2);
+  assert.equal(result.state.schemaVersion, SCHEMA_VERSION);
   assert.equal(result.status.persistent, false);
   assert.equal(result.state.simulation.paused, true);
   assert.equal(disk.getItem(STORAGE_KEY), raw);
@@ -226,14 +226,17 @@ test('every online measurement receives the tick time, even if a value rounds to
   assert.ok(updated.sensors.every((s) => s.lastUpdatedAt === f.now()));
 });
 
-test('invalid measurements and malformed history are rejected without partial changes', () => {
+test('invalid measurements reject the frame, mark the fault offline and retain good values; malformed history is rejected', () => {
   const f = fixture();
   const before = f.store.getState();
   const batch = simulateReadings(before, { random: () => 0.5 });
   batch[0].value = NaN;
   f.advance();
   assert.equal(f.store.recordMeasurements(batch, f.now()).ok, false);
-  assert.deepEqual(f.store.getState(), before);
+  assert.deepEqual(f.store.getState().sensors, before.sensors.map((s, i) => i === 0 ? { ...s, status: 'offline' } : s));
+  assert.deepEqual(f.store.getState().history, before.history);
+  assert.equal(f.store.getState().simulation.lastTickAt, null);
+  assert.ok(f.store.getState().alerts.some((a) => a.type === 'sensor-unavailable'));
   f.simulator.pause(); f.simulator.step();
   const invalid = f.store.getState();
   invalid.history[0].sensors[0].sensorId = 'orphan';

@@ -3,7 +3,7 @@ import { createStore } from './store.js';
 import { renderDataPage } from './views.js';
 import { createSimulator } from './simulator.js';
 
-// Stage 5: one simulator; store applies safety and Auto before publishing each update.
+// Stage 6: one simulator; store reconciles devices, Alerts and Event Log before publishing.
 initNavigation();
 const store = createStore();
 const simulator = createSimulator(store);

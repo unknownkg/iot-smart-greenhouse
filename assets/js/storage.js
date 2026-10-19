@@ -1,4 +1,6 @@
 import { SCHEMA_VERSION, HISTORY_LIMIT, SENSOR_TYPES, DEVICE_TYPES, ZONE_DEFINITIONS, createInitialState } from './data.js';
+import { validateJournal } from './events.js';
+import { validateAlerts } from './alerts.js';
 
 export const STORAGE_KEY = 'iotSmartGreenhouse.state';
 
@@ -66,9 +68,9 @@ function validateVersion(state, version) {
       if (!keysAre(settings[type], [key]) || !numberIn(settings[type][key], 0, max)) return fail('thresholds');
     }
   }
-  for (const key of ['alerts', 'events']) {
-    if (!Array.isArray(state[key]) || state[key].length !== 0) return fail('reserved-collections');
-  }
+  if (version < 3) {
+    for (const key of ['alerts', 'events']) if (!Array.isArray(state[key]) || state[key].length !== 0) return fail('reserved-collections');
+  } else if (!validateJournal(state) || !validateAlerts(state)) return fail('audit');
   if (!Array.isArray(state.history)) return fail('history');
   if (version === 1) return state.history.length === 0 ? { ok: true } : fail('legacy-history');
   if (!keysAre(state.simulation, ['paused', 'lastTickAt']) || typeof state.simulation.paused !== 'boolean'
@@ -134,9 +136,10 @@ export function loadState(options = {}) {
   if (raw !== null) {
     let saved;
     try { saved = JSON.parse(raw); } catch { return fallback('invalid-json'); }
-    if (object(saved) && saved.schemaVersion === 1) {
-      if (!validateVersion(saved, 1).ok || saved.savedAt === null) return fallback('invalid-state');
-      const migrated = { ...saved, schemaVersion: SCHEMA_VERSION, simulation: { paused: false, lastTickAt: null } };
+    if (object(saved) && [1, 2].includes(saved.schemaVersion)) {
+      if (!validateVersion(saved, saved.schemaVersion).ok || saved.savedAt === null) return fallback('invalid-state');
+      const migrated = { ...saved, schemaVersion: SCHEMA_VERSION, audit: { nextId: 1 },
+        simulation: saved.schemaVersion === 1 ? { paused: false, lastTickAt: null } : saved.simulation };
       const result = saveState(migrated, options);
       if (!result.ok) migrated.simulation.paused = true;
       return result.ok

@@ -88,7 +88,7 @@ for (const value of [NaN, 15]) {
     assert.equal(f.device('pump').source, 'system');
     assert.ok(f.device('pump').blockedReason);
     assert.deepEqual(f.store.getState().history, before.history);
-    assert.deepEqual(f.store.getState().sensors.find((s) => s.type === 'temperature'), before.sensors.find((s) => s.type === 'temperature'));
+    assert.deepEqual(f.store.getState().sensors.find((s) => s.type === 'temperature'), { ...before.sensors.find((s) => s.type === 'temperature'), status: 'offline' });
     assert.equal(water(f.store.getState()).status, Number.isFinite(value) ? 'online' : 'offline');
     const restored = createStore({ storage: f.disk, now: f.now });
     assert.equal(restored.getZoneDevices('ZONE-01').find((d) => d.type === 'pump').isOn, false);

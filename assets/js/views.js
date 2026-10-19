@@ -3,6 +3,7 @@ import { deviceBlockReason } from './safety.js';
 import { evaluateAutomation } from './automation.js';
 import { SCENARIOS } from './scenarios.js';
 import { bindSettingsForm } from './settings-form.js';
+import { bindMonitoringViews, recentEvents } from './monitoring-views.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -27,7 +28,9 @@ export function buildDashboardModel(state) {
     const values = state.sensors.filter((sensor) => sensor.type === type && sensor.status === 'online');
     return [type, values.length ? Math.round(values.reduce((sum, sensor) => sum + sensor.value, 0) / values.length * 10) / 10 : null];
   }));
-  return { ...averages, online: state.sensors.filter((sensor) => sensor.status === 'online').length };
+  const open = state.alerts.filter((alert) => alert.status === 'open');
+  return { ...averages, online: state.sensors.filter((sensor) => sensor.status === 'online').length, alerts: open.length,
+    warning: open.filter((a) => a.severity === 'warning').length, critical: open.filter((a) => a.severity === 'critical').length };
 }
 
 function kpiCards(state) {
@@ -41,12 +44,12 @@ function kpiCards(state) {
     ['online', 'Датчиков online', 'sensor', '/ 18'],
   ];
   return definitions.map(([type, name, symbol, unit]) => {
-    const unavailable = model[type] === null || type === 'alerts';
+    const unavailable = model[type] === null;
     const value = unavailable ? '—' : format(model[type]);
-    const caption = type === 'alerts' ? 'Модуль не подключён' : type === 'online'
+    const caption = type === 'alerts' ? `${model.warning} Warning · ${model.critical} Critical` : type === 'online'
       ? 'Виртуальные датчики' : unavailable ? 'Нет online-данных' : 'Среднее online · симуляция';
     return `<article class="kpi-card"><div class="kpi-top"><span>${name}</span>${icon(symbol)}</div>
-      <p class="kpi-value mono">${value}<span>${unit}</span></p><p class="kpi-bottom">${caption}</p></article>`;
+      <p class="kpi-value mono${type === 'alerts' ? model.critical ? ' status-critical' : model.warning ? ' status-warning' : '' : ''}">${value}<span>${unit}</span></p><p class="kpi-bottom">${caption}</p></article>`;
   }).join('');
 }
 
@@ -57,11 +60,12 @@ export function zoneCards(state, detailed = false) {
     const metrics = types.map((type) => `<div><dt>${type.name}</dt><dd class="mono">${reading(values[type.type])}</dd></div>`).join('');
     const online = state.sensors.filter((sensor) => sensor.zoneId === zone.id && sensor.status === 'online').length;
     const on = state.devices.filter((device) => device.zoneId === zone.id && device.isOn).length;
+    const activeAlerts = state.alerts.filter((a) => a.zoneId === zone.id && a.status === 'open');
     return `<article class="zone-card"><div class="zone-head"><div>
       <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Симуляция', 'cyan')}</div>
       <div class="zone-visual">${icon('greenhouse', 'greenhouse')}<div><small>Влажность почвы</small>
       <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Учебное измерение</span></div></div>
-      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Auto' : 'Manual'}</dd></div><div><dt>Устройства</dt><dd>${on} / 6 устройств ON</dd></div><div><dt>Риск</dt><dd class="muted">Не рассчитан</dd></div></dl>
+      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Auto' : 'Manual'}</dd></div><div><dt>Устройства</dt><dd>${on} / 6 устройств ON</dd></div><div><dt>Alerts</dt><dd class="${activeAlerts.some((a) => a.severity === 'critical') ? 'status-critical' : activeAlerts.length ? 'status-warning' : 'muted'}">${activeAlerts.length} активных</dd></div><div><dt>Риск</dt><dd class="muted">Не рассчитан</dd></div></dl>
       <div class="zone-footer"><span>${online} / 6 online · симуляция</span><span>${state.simulation.paused ? 'На паузе' : `Шаг ${state.settings.simulationIntervalMs / 1000} с`}</span></div></article>`;
   }).join('');
 }
@@ -147,6 +151,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
     });
   }
   const settingsForm = bindSettingsForm(store, documentRoot);
+  const monitoring = bindMonitoringViews(store, documentRoot);
   const storageNotice = documentRoot.createElement('div');
   storageNotice.className = 'notice';
   storageNotice.setAttribute('role', 'status');
@@ -190,6 +195,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       fill('[data-kpis]', kpiCards(state));
       fill('[data-zone-cards]', zoneCards(state));
       fill('[data-device-summary]', deviceSummary(state));
+      fill('[data-recent-events]', recentEvents(state));
     } else if (page === 'zones') {
       fill('[data-zone-cards]', zoneCards(state, true));
       fill('[data-sensor-rows]', sensorRows(state, selectedZone));
@@ -208,6 +214,8 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       documentRoot.querySelector('[data-zone-mode-summary]').textContent = `${zone.name}: ${zone.mode === 'auto' ? 'Auto — правила применяются по порогам, ручные команды заблокированы.' : 'Manual — устройствами управляет оператор.'}`;
     } else if (page === 'settings') {
       settingsForm.render(selectedZone);
+    } else if (page === 'alerts' || page === 'event-log') {
+      monitoring.render();
     }
   }
   render();

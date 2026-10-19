@@ -3,6 +3,8 @@ import { HISTORY_LIMIT, SENSOR_TYPES } from './data.js';
 import { deviceBlockReason, enforceDeviceSafety } from './safety.js';
 import { evaluateAutomation } from './automation.js';
 import { buildScenarioReadings } from './scenarios.js';
+import { appendEvent, recordDeviceEvents, thresholdSummary } from './events.js';
+import { syncAlerts } from './alerts.js';
 
 export function createStore(options = {}) {
   let { state, status } = loadState(options);
@@ -12,9 +14,15 @@ export function createStore(options = {}) {
   const snapshot = () => structuredClone(state);
   const notify = () => subscribers.forEach((listener) => listener(snapshot(), { ...status }));
   const now = options.now ?? (() => new Date().toISOString());
+  const actionTime = () => state.events.reduce((latest, event) => event.timestamp > latest ? event.timestamp : latest, now());
   const recoveryReason = () => writeBlocked ? 'Сохранённая модель не восстановлена. Управление заблокировано до сброса данных.' : null;
   function reconcileDevices(next, timestamp) {
+    const actions = {};
+    const beforeSafety = new Map(next.devices.map((device) => [device.id, device.isOn]));
     const before = enforceDeviceSafety(next, timestamp, recoveryReason());
+    for (const device of next.devices) {
+      if (beforeSafety.get(device.id) !== device.isOn) actions[device.id] = { source: 'safety', reason: device.blockedReason ?? before.message };
+    }
     if (!recoveryReason()) {
       for (const zone of next.zones.filter((item) => item.mode === 'auto')) {
         const decisions = evaluateAutomation(next, zone.id);
@@ -23,15 +31,31 @@ export function createStore(options = {}) {
             device.isOn = decisions[device.type].isOn;
             device.source = 'automation';
             device.changedAt = timestamp;
+            actions[device.id] = { source: 'auto', reason: decisions[device.type].reason };
           }
         }
       }
     }
+    const beforeFinalSafety = new Map(next.devices.map((device) => [device.id, device.isOn]));
     const after = enforceDeviceSafety(next, timestamp, recoveryReason());
-    return { message: after.message || (before.message.includes('восстановлен конфликт') ? before.message : '') };
+    for (const device of next.devices) {
+      if (beforeFinalSafety.get(device.id) !== device.isOn) actions[device.id] = { source: 'safety', reason: device.blockedReason ?? after.message };
+    }
+    return { actions, message: after.message || (before.message.includes('восстановлен конфликт') ? before.message : '') };
   }
-  function commit(next) {
-    const safety = reconcileDevices(next, now());
+  function commit(next, context = null) {
+    const timestamp = actionTime();
+    const safety = reconcileDevices(next, timestamp);
+    recordDeviceEvents(state, next, timestamp, { ...context, deviceActions: safety.actions, safetyReason: safety.message });
+    for (const sensor of next.sensors) {
+      const old = state.sensors.find((item) => item.id === sensor.id);
+      if (old.status !== sensor.status) appendEvent(next, { zoneId: sensor.zoneId, source: 'system', type: 'SENSOR_STATUS_CHANGED',
+        objectId: sensor.id, objectName: SENSOR_TYPES.find((item) => item.type === sensor.type).name,
+        previousState: old.status, newState: sensor.status, message: 'Изменён статус датчика.',
+        reason: sensor.status === 'offline' ? 'Нет достоверного online-показания; последнее корректное значение не подменяется.' : 'Датчик отмечен online.' }, timestamp);
+    }
+    if (context?.type) appendEvent(next, context, timestamp);
+    syncAlerts(next, timestamp);
     if (!validateState(next).ok) return { ok: false, issue: 'invalid-state' };
     const saved = writeBlocked ? { ok: false, issue: status.issue } : saveState(next, options);
     state = saved.ok ? saved.state : next;
@@ -42,8 +66,22 @@ export function createStore(options = {}) {
   }
   function checkLoadedSafety() {
     const next = snapshot();
-    reconcileDevices(next, now());
-    if (JSON.stringify(next.devices) !== JSON.stringify(state.devices)) commit(next);
+    reconcileDevices(next, actionTime());
+    syncAlerts(next, actionTime());
+    const migration = status.source === 'migrated';
+    if (migration || JSON.stringify(next.devices) !== JSON.stringify(state.devices) || JSON.stringify(next.alerts) !== JSON.stringify(state.alerts)) {
+      commit(snapshot(), migration ? { source: 'system', type: 'STATE_MIGRATED', objectName: 'Схема данных',
+        previousState: 'v1/v2', newState: 'v3', message: 'Сохранённая модель перенесена в схему v3.',
+        reason: 'Добавлены Alerts и Event Log; настройки, устройства и история измерений сохранены.' } : null);
+    }
+  }
+  function rejectDevice(device, isOn, message, source, key) {
+    const next = snapshot();
+    if (appendEvent(next, { zoneId: device.zoneId, source, type: 'COMMAND_REJECTED', objectId: device.id,
+      objectName: device.type, previousState: device.isOn ? 'ON' : 'OFF', newState: device.isOn ? 'ON' : 'OFF',
+      message: `Команда ${isOn ? 'ON' : 'OFF'} отклонена; фактическое состояние не изменено.`, reason: message,
+      dedupeKey: `${device.id}|${isOn}|${key}` }, actionTime())) commit(next);
+    return { ok: false, message };
   }
   function preserveMeasurementSafety(measurements, timestamp) {
     const safe = snapshot();
@@ -57,7 +95,7 @@ export function createStore(options = {}) {
       const invalid = patches.length !== 1 || !Number.isFinite(value) || value < range.min || value > range.max;
       const automatic = safe.zones.find((zone) => zone.id === sensor.zoneId).mode === 'auto';
       const unsafeWater = sensor.type === 'waterLevel' && (invalid || value <= safe.settings.zones[sensor.zoneId].waterLevel.critical);
-      if (!automatic && !unsafeWater) continue;
+      if (!automatic && !unsafeWater && !invalid) continue;
       hazard = true;
       if (invalid) sensor.status = 'offline';
       else { sensor.value = value; sensor.lastUpdatedAt = timestamp; }
@@ -103,7 +141,10 @@ export function createStore(options = {}) {
         }
       }
       zone.mode = mode;
-      const result = commit(next);
+      const result = commit(next, { zoneId, source: 'operator', type: 'MODE_CHANGED', objectId: zoneId, objectName: 'Режим зоны',
+        previousState: state.zones.find((item) => item.id === zoneId).mode, newState: mode,
+        message: `Режим зоны изменён на ${mode === 'auto' ? 'Auto' : 'Manual'}.`,
+        reason: mode === 'auto' ? 'Оператор включил управление по порогам.' : 'Возврат в Manual: устройства зоны безопасно выключены.' });
       return { ...result, message: result.ok ? `Режим ${mode === 'auto' ? 'Auto: правила применены' : 'Manual: устройства выключены'}${result.persisted ? '.' : ' в памяти; сохранить не удалось.'}` : 'Режим не изменён: некорректные данные.' };
     },
     setDeviceState(deviceId, isOn) {
@@ -111,9 +152,9 @@ export function createStore(options = {}) {
       const next = snapshot();
       const device = next.devices.find((item) => item.id === deviceId);
       if (!device) return { ok: false, message: 'Неизвестное устройство.' };
-      if (next.zones.find((zone) => zone.id === device.zoneId).mode === 'auto') return { ok: false, message: 'Auto управляет устройствами. Для ручной команды выберите Manual.' };
+      if (next.zones.find((zone) => zone.id === device.zoneId).mode === 'auto') return rejectDevice(device, isOn, 'Auto управляет устройствами. Для ручной команды выберите Manual.', 'operator', 'auto-mode');
       const reason = recoveryReason() ?? deviceBlockReason(next, device);
-      if (isOn && reason) return { ok: false, message: reason };
+      if (isOn && reason) return rejectDevice(device, isOn, reason, 'safety', device.type === 'pump' ? 'water-or-recovery' : 'interlock');
       if (device.isOn === isOn) return { ok: true, persisted: status.persistent, message: 'Состояние уже установлено.' };
       device.isOn = isOn;
       device.source = 'manual';
@@ -137,23 +178,31 @@ export function createStore(options = {}) {
       try { next.settings.zones[zoneId] = structuredClone(settings); }
       catch { return { ok: false, issue: 'invalid-settings' }; }
       if (!validateState(next).ok) return { ok: false, issue: 'invalid-settings' };
-      return commit(next);
+      if (thresholdSummary(state.settings.zones[zoneId]) === thresholdSummary(next.settings.zones[zoneId])) return { ok: true, persisted: status.persistent };
+      return commit(next, { zoneId, source: 'settings', type: 'SETTINGS_CHANGED', objectId: zoneId, objectName: 'Пороги зоны',
+        previousState: thresholdSummary(state.settings.zones[zoneId]), newState: thresholdSummary(next.settings.zones[zoneId]),
+        message: 'Изменены пороговые значения зоны.', reason: 'Новые пороги применены; Auto и Alerts переоценены без нового измерения.' });
     },
     setSimulationPaused(paused) {
       if (typeof paused !== 'boolean') return { ok: false, issue: 'invalid-pause' };
       if (state.simulation.paused === paused) return { ok: true, persisted: status.persistent };
       const next = snapshot();
       next.simulation.paused = paused;
-      return commit(next);
+      return commit(next, { source: 'operator', type: paused ? 'SIMULATION_PAUSED' : 'SIMULATION_RESUMED', objectName: 'Учебный симулятор',
+        previousState: state.simulation.paused ? 'paused' : 'running', newState: paused ? 'paused' : 'running',
+        message: paused ? 'Симуляция поставлена на паузу.' : 'Симуляция продолжена.', reason: 'Явная команда управления симуляцией.' });
     },
     applyScenario(zoneId, scenarioId) {
       const input = buildScenarioReadings(state, zoneId, scenarioId);
       if (!input.ok) return input;
-      const result = api.recordMeasurements(input.measurements, now());
+      const result = api.recordMeasurements(input.measurements, now(), { zoneId, source: 'scenario',
+        type: scenarioId === 'restore' ? 'SCENARIO_RESTORED' : 'SCENARIO_APPLIED', objectName: 'Учебный сценарий',
+        newState: input.name, message: `Учебный сценарий: ${input.name}.`,
+        reason: 'Заданы воспроизводимые входные показания; режим и пороги сохранены, решения приняты общими правилами.' });
       const mode = state.zones.find((zone) => zone.id === zoneId).mode;
       return { ...result, message: result.ok ? `Учебный сценарий «${input.name}» применён. ${mode === 'auto' ? 'Auto пересчитан' : 'Manual сохранён: устройства включаются оператором'}${result.persisted ? '.' : ' в памяти; сохранить не удалось.'}` : 'Сценарий не применён: проверьте показания и время измерений.' };
     },
-    recordMeasurements(measurements, timestamp) {
+    recordMeasurements(measurements, timestamp, context = null) {
       if (!Array.isArray(measurements) || typeof timestamp !== 'string' || !Number.isFinite(Date.parse(timestamp))
         || new Date(timestamp).toISOString() !== timestamp) return { ok: false, issue: 'invalid-measurements' };
       const online = state.sensors.filter((sensor) => sensor.status === 'online');
@@ -183,7 +232,7 @@ export function createStore(options = {}) {
         sensorId: sensor.id, value: sensor.value, status: sensor.status, lastUpdatedAt: sensor.lastUpdatedAt,
       })) });
       next.history = next.history.slice(-HISTORY_LIMIT);
-      const result = commit(next);
+      const result = commit(next, context);
       if (result.ok) return result;
       // Reject the history frame, but never discard independently trusted safety inputs.
       return { ...result, ...preserveMeasurementSafety(measurements, timestamp) };

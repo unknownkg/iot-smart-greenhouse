@@ -175,16 +175,19 @@ test('narrow threshold intervals have non-overlapping hysteresis and boundary va
   assert.equal(f.device('growLight').isOn, false); assert.equal(f.device('vent').isOn, false);
 });
 
-test('Auto uses one simulator timer and one paused step; no fake operational records are created', () => {
+test('Auto uses one simulator timer and one paused step; ordinary ticks add no journal events', () => {
   const f = fixture({ soil: 30 }, 'auto');
   const jobs = new Map(); let count = 0;
   const sim = createSimulator(f.store, { random: () => 0.5, now: () => '2026-10-18T12:00:05.000Z',
     setInterval: (fn) => { jobs.set(++count, fn); return count; }, clearInterval: (id) => jobs.delete(id) });
   sim.start(); assert.equal(jobs.size, 0);
+  const beforeStepEvents = f.store.getState().events.length;
   sim.step(); assert.equal(f.store.getState().history.length, 1);
+  assert.equal(f.store.getState().events.length, beforeStepEvents);
   assert.equal(f.store.getZoneReadings(ZONE).soil.value, 31);
   sim.resume(); f.store.setZoneMode('ZONE-02', 'auto'); assert.equal(jobs.size, 1);
-  assert.deepEqual(f.store.getState().alerts, []); assert.deepEqual(f.store.getState().events, []);
+  assert.ok(f.store.getState().alerts.some((a) => a.type === 'soil-low'));
+  assert.ok(f.store.getState().events.some((e) => e.type === 'MODE_CHANGED'));
   sim.dispose();
 });
 

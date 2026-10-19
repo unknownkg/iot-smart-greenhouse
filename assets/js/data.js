@@ -1,6 +1,15 @@
-export const SCHEMA_VERSION = 2;
+export const SCHEMA_VERSION = 3;
 // 240 whole-greenhouse samples: about 20 minutes at the default 5 second interval.
 export const HISTORY_LIMIT = 240;
+export const ALERT_LIMIT = 200;
+export const EVENT_LIMIT = 300;
+
+// Shared release band for humidity Auto, Alerts and restoration, including narrow ranges.
+export function humidityRecovery({ min, max }) {
+  const gap = Math.min(3, (max - min) / 2);
+  const middle = (min + max) / 2;
+  return { low: Math.min(min + gap, middle), high: Math.max(max - gap, middle) };
+}
 
 export const SENSOR_TYPES = Object.freeze([
   { type: 'temperature', label: 'Temperature', name: 'Температура', unit: '°C', min: -50, max: 80 },
@@ -70,7 +79,8 @@ export function createInitialState(timestamp = new Date().toISOString()) {
         co2: { max: 1500 },
       }])),
     },
-    // Operational alerts/events remain reserved for later stages.
+    // One durable counter prevents ID reuse after retention or page reload.
+    audit: { nextId: 1 },
     alerts: [],
     events: [],
     history: [],

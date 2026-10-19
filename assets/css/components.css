@@ -112,3 +112,17 @@ tbody tr:hover td:not(.table-empty) { background: rgb(255 255 255 / 3%); }
 .field-error { color: var(--red); font-size: 12px; overflow-wrap: anywhere; }
 .field [aria-invalid='true'] { border-color: var(--red); }
 .control-feedback { overflow-wrap: anywhere; }
+.status-critical { color: var(--red); }
+.status-warning { color: var(--yellow); }
+.button[hidden] { display: none; }
+.alert-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-bottom: 22px; }
+.alert-summary > div { min-width: 0; display: grid; gap: 8px; padding: 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-raised); }
+.alert-summary .badge { max-width: 100%; white-space: normal; }
+.alert-summary strong { font-size: 28px; }
+.audit-description { min-width: 250px; max-width: 560px; white-space: normal; overflow-wrap: anywhere; }
+.audit-description p { margin-top: 5px; }
+.event-feed { display: grid; gap: 14px; }
+.event-item { min-width: 0; border-bottom: 1px solid var(--border); padding-bottom: 14px; overflow-wrap: anywhere; }
+.event-item:last-child { border-bottom: 0; padding-bottom: 0; }
+.event-item > div { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.event-item p { margin-top: 7px; font-size: 13px; }
