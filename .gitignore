@@ -1,0 +1,9 @@
+# Локальные данные и диагностические материалы
+/screenshots/
+/docs/superpowers/
+/.codex/
+/.env
+/.env.*
+*.bundle
+*.log
+*.tmp
