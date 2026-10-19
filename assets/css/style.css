@@ -3,41 +3,49 @@
 
 :root {
   color-scheme: dark;
-  --bg: #0b1118;
-  --surface: #111a24;
-  --surface-raised: #16212d;
-  --surface-hover: #1b2936;
-  --border: #25323e;
-  --text: #e7edf3;
-  --muted: #9aaabc;
-  --green: #7de2ad;
+  --bg: #171717;
+  --surface: #202225;
+  --surface-raised: #272a31;
+  --surface-hover: #2d3036;
+  --border: rgb(255 255 255 / 11%);
+  --border-strong: rgb(255 255 255 / 20%);
+  --sidebar-bg: #1b1c1e;
+  --input-bg: #1a1b1d;
+  --green-soft: rgb(94 223 139 / 9%);
+  --green-border: rgb(94 223 139 / 26%);
+  --green-bright: #5bff95;
+  --info-soft: rgb(121 205 228 / 7%);
+  --info-border: rgb(121 205 228 / 24%);
+  --text: #dce2ec;
+  --muted: #96a2b4;
+  --green: #5edf8b;
   --cyan: #79cde4;
-  --yellow: #edc87e;
+  --yellow: #fec107;
   --red: #f39393;
-  --radius: 14px;
+  --radius: 11px;
   font-family: 'Segoe UI', system-ui, sans-serif;
   font-synthesis: none;
 }
 * { box-sizing: border-box; }
-body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.55; }
+body { margin: 0; background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.6; }
 a { color: inherit; text-decoration: none; }
 button, input, select { font: inherit; }
 button, select { color: inherit; }
 button { cursor: pointer; }
-button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: .65; }
-button, input, select { border-radius: 8px; }
+button:disabled, input:disabled, select:disabled { cursor: not-allowed; opacity: 1; }
+button, input, select { border-radius: 7px; }
 :focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
 h1, h2, h3, p { margin: 0; }
-h1 { font-size: clamp(25px, 3vw, 34px); font-weight: 650; letter-spacing: -.9px; line-height: 1.2; }
+h1 { font-size: clamp(25px, 3vw, 32px); font-weight: 650; letter-spacing: -.6px; line-height: 1.2; }
 h2 { font-size: 17px; font-weight: 600; letter-spacing: -.25px; }
 h3 { font-size: 16px; font-weight: 600; }
 small { font-size: 12px; }
 strong { font-weight: 600; }
-::selection { background: #285744; }
+::selection { background: #294635; color: #f1fff5; }
 .icon { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .muted { color: var(--muted); }
 .mono { font-family: Consolas, 'Courier New', monospace; font-variant-numeric: tabular-nums; }
-.eyebrow { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1.8px; margin-bottom: 9px; }
+.eyebrow { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 9px; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .skip-link { position: fixed; top: -100px; left: 20px; background: var(--green); color: #10241a; padding: 10px 16px; z-index: 100; }
 .skip-link:focus { top: 12px; }
