@@ -1,4 +1,6 @@
-export const SCHEMA_VERSION = 1;
+export const SCHEMA_VERSION = 2;
+// 240 whole-greenhouse samples: about 20 minutes at the default 5 second interval.
+export const HISTORY_LIMIT = 240;
 
 export const SENSOR_TYPES = Object.freeze([
   { type: 'temperature', label: 'Temperature', name: 'Температура', unit: '°C', min: -50, max: 80 },
@@ -36,6 +38,7 @@ export function createInitialState(timestamp = new Date().toISOString()) {
     isDemo: true,
     createdAt: timestamp,
     savedAt: null,
+    simulation: { paused: false, lastTickAt: null },
     zones: ZONE_DEFINITIONS.map((zone) => ({ ...zone, mode: 'manual' })),
     sensors: ZONE_DEFINITIONS.flatMap((zone, index) => SENSOR_TYPES.map((sensor, typeIndex) => ({
       id: `${zone.id}-S-${sensor.type}`,
@@ -67,7 +70,7 @@ export function createInitialState(timestamp = new Date().toISOString()) {
         co2: { max: 1500 },
       }])),
     },
-    // Reserved collections; their domain schemas will be introduced in later stages.
+    // Operational alerts/events remain reserved for later stages.
     alerts: [],
     events: [],
     history: [],

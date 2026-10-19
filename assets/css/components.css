@@ -99,3 +99,6 @@ legend { margin-bottom: 18px; font-size: 17px; font-weight: 600; }
 tbody tr:hover td:not(.table-empty) { background: rgb(255 255 255 / 3%); }
 .zone-metrics > div { min-width: 0; }
 .zone-footer { flex-wrap: wrap; }
+.simulation-panel { margin-bottom: 22px; }
+.simulation-panel .panel-heading { flex-wrap: wrap; }
+.simulation-panel .form-actions { margin-top: 0; }

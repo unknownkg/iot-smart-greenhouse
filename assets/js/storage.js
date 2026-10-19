@@ -1,4 +1,4 @@
-import { SCHEMA_VERSION, SENSOR_TYPES, DEVICE_TYPES, ZONE_DEFINITIONS, createInitialState } from './data.js';
+import { SCHEMA_VERSION, HISTORY_LIMIT, SENSOR_TYPES, DEVICE_TYPES, ZONE_DEFINITIONS, createInitialState } from './data.js';
 
 export const STORAGE_KEY = 'iotSmartGreenhouse.state';
 
@@ -9,9 +9,9 @@ const numberIn = (value, min, max) => Number.isFinite(value) && value >= min && 
 const keysAre = (value, keys) => object(value) && Object.keys(value).length === keys.length
   && keys.every((key) => Object.hasOwn(value, key));
 
-export function validateState(state) {
+function validateVersion(state, version) {
   const fail = (reason) => ({ ok: false, reason });
-  if (!object(state) || state.schemaVersion !== SCHEMA_VERSION) return fail('schema');
+  if (!object(state) || state.schemaVersion !== version) return fail('schema');
   if (state.isDemo !== true || !date(state.createdAt)
     || !(state.savedAt === null || date(state.savedAt))) return fail('metadata');
   if (!Array.isArray(state.zones) || state.zones.length !== 3
@@ -66,11 +66,37 @@ export function validateState(state) {
       if (!keysAre(settings[type], [key]) || !numberIn(settings[type][key], 0, max)) return fail('thresholds');
     }
   }
-  // No alerts/events/history are generated or consumed by this schema stage.
-  for (const key of ['alerts', 'events', 'history']) {
+  for (const key of ['alerts', 'events']) {
     if (!Array.isArray(state[key]) || state[key].length !== 0) return fail('reserved-collections');
   }
+  if (!Array.isArray(state.history)) return fail('history');
+  if (version === 1) return state.history.length === 0 ? { ok: true } : fail('legacy-history');
+  if (!keysAre(state.simulation, ['paused', 'lastTickAt']) || typeof state.simulation.paused !== 'boolean'
+    || !(state.simulation.lastTickAt === null || date(state.simulation.lastTickAt))
+    || state.history.length > HISTORY_LIMIT) return fail('simulation');
+  let previous = -Infinity;
+  for (const sample of state.history) {
+    if (!object(sample) || !date(sample.timestamp) || Date.parse(sample.timestamp) < previous
+      || !Array.isArray(sample.sensors) || sample.sensors.length !== 18) return fail('history');
+    previous = Date.parse(sample.timestamp);
+    const seen = new Set();
+    for (const measurement of sample.sensors) {
+      if (!object(measurement)) return fail('history');
+      const sensor = state.sensors.find((item) => item.id === measurement.sensorId);
+      const type = SENSOR_TYPES.find((item) => item.type === sensor?.type);
+      if (!sensor || seen.has(sensor.id) || !numberIn(measurement.value, type.min, type.max)
+        || !['online', 'offline'].includes(measurement.status) || !date(measurement.lastUpdatedAt)
+        || Date.parse(measurement.lastUpdatedAt) > previous
+        || (measurement.status === 'online' && measurement.lastUpdatedAt !== sample.timestamp)) return fail('history');
+      seen.add(sensor.id);
+    }
+  }
+  if (state.simulation.lastTickAt !== (state.history.at(-1)?.timestamp ?? null)) return fail('last-tick');
   return { ok: true };
+}
+
+export function validateState(state) {
+  return validateVersion(state, SCHEMA_VERSION);
 }
 
 function resolveStorage(storage) {
@@ -93,10 +119,12 @@ export function saveState(state, { storage, now = () => new Date().toISOString()
 
 export function loadState(options = {}) {
   const now = options.now ?? (() => new Date().toISOString());
-  const fallback = (issue) => ({
-    state: createInitialState(now()),
-    status: { source: 'memory', persistent: false, issue },
-  });
+  const fallback = (issue) => {
+    const state = createInitialState(now());
+    // Unknown saved pause state must not result in an automatic restart.
+    state.simulation.paused = true;
+    return { state, status: { source: 'memory', persistent: false, issue } };
+  };
   let raw;
   try {
     raw = resolveStorage(options.storage).getItem(STORAGE_KEY);
@@ -106,12 +134,22 @@ export function loadState(options = {}) {
   if (raw !== null) {
     let saved;
     try { saved = JSON.parse(raw); } catch { return fallback('invalid-json'); }
+    if (object(saved) && saved.schemaVersion === 1) {
+      if (!validateVersion(saved, 1).ok || saved.savedAt === null) return fallback('invalid-state');
+      const migrated = { ...saved, schemaVersion: SCHEMA_VERSION, simulation: { paused: false, lastTickAt: null } };
+      const result = saveState(migrated, options);
+      if (!result.ok) migrated.simulation.paused = true;
+      return result.ok
+        ? { state: result.state, status: { source: 'migrated', persistent: true, issue: null } }
+        : { state: migrated, status: { source: 'memory', persistent: false, issue: 'migration-write-failed' } };
+    }
     if (!object(saved) || saved.schemaVersion !== SCHEMA_VERSION) return fallback('incompatible-schema');
     if (!validateState(saved).ok || saved.savedAt === null) return fallback('invalid-state');
     return { state: saved, status: { source: 'saved', persistent: true, issue: null } };
   }
   const initial = createInitialState(now());
   const saved = saveState(initial, options);
+  if (!saved.ok) initial.simulation.paused = true;
   return saved.ok
     ? { state: saved.state, status: { source: 'initial', persistent: true, issue: null } }
     : { state: initial, status: { source: 'memory', persistent: false, issue: saved.issue } };

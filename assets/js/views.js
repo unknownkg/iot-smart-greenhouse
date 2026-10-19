@@ -1,4 +1,4 @@
-import { SENSOR_TYPES, DEVICE_TYPES } from './data.js';
+import { SENSOR_TYPES, DEVICE_TYPES, HISTORY_LIMIT } from './data.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -35,7 +35,7 @@ function kpiCards(state) {
     const unavailable = model[type] === null || type === 'alerts';
     const value = unavailable ? '—' : format(model[type]);
     const caption = type === 'alerts' ? 'Модуль не подключён' : type === 'online'
-      ? 'Виртуальные статусы · демо' : unavailable ? 'Нет online-данных' : 'Среднее online · демо';
+      ? 'Виртуальные датчики' : unavailable ? 'Нет online-данных' : 'Среднее online · симуляция';
     return `<article class="kpi-card"><div class="kpi-top"><span>${name}</span>${icon(symbol)}</div>
       <p class="kpi-value mono">${value}<span>${unit}</span></p><p class="kpi-bottom">${caption}</p></article>`;
   }).join('');
@@ -48,11 +48,11 @@ export function zoneCards(state, detailed = false) {
     const metrics = types.map((type) => `<div><dt>${type.name}</dt><dd class="mono">${reading(values[type.type])}</dd></div>`).join('');
     const online = state.sensors.filter((sensor) => sensor.zoneId === zone.id && sensor.status === 'online').length;
     return `<article class="zone-card"><div class="zone-head"><div>
-      <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Демо', 'cyan')}</div>
+      <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Симуляция', 'cyan')}</div>
       <div class="zone-visual">${icon('greenhouse', 'greenhouse')}<div><small>Влажность почвы</small>
-      <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Сохранённое значение</span></div></div>
+      <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Учебное измерение</span></div></div>
       <dl class="zone-metrics">${metrics}<div><dt>Риск</dt><dd class="muted">Не рассчитан</dd></div></dl>
-      <div class="zone-footer"><span>${online} / 6 online · демо</span><span>Без автообновления</span></div></article>`;
+      <div class="zone-footer"><span>${online} / 6 online · симуляция</span><span>${state.simulation.paused ? 'На паузе' : `Шаг ${state.settings.simulationIntervalMs / 1000} с`}</span></div></article>`;
   }).join('');
 }
 
@@ -62,8 +62,8 @@ export function sensorRows(state, zoneId) {
     const zone = state.zones.find((item) => item.id === sensor.zoneId);
     return `<tr><td>${type.label}<br><small class="muted mono">${escape(sensor.id)}</small></td>
       <td>${escape(zone.name)}<br><small class="muted">${escape(zone.id)}</small></td>
-      <td class="mono">${format(sensor.value)}</td><td>${escape(sensor.unit)}</td>
-      <td>${badge(`${sensor.status} · демо`, sensor.status === 'online' ? 'green' : 'yellow')}</td>
+      <td class="mono">${format(sensor.value)}${sensor.status === 'offline' ? '<br><small class="muted">Устаревшее</small>' : ''}</td><td>${escape(sensor.unit)}</td>
+      <td>${badge(`${sensor.status} · симуляция`, sensor.status === 'online' ? 'green' : 'yellow')}</td>
       <td><time datetime="${escape(sensor.lastUpdatedAt)}">${time(sensor.lastUpdatedAt)}</time></td></tr>`;
   }).join('');
 }
@@ -88,14 +88,14 @@ function deviceSummary(state) {
 }
 
 function storageMessage(state, status) {
-  if (status.persistent) return `Демоданные сохранены локально. Последнее сохранение: ${time(state.savedAt)}. Показания не обновляются автоматически.`;
+  if (status.persistent) return `Учебные измерения сохранены локально. Последнее сохранение: ${time(state.savedAt)}. ${state.simulation.paused ? 'Симуляция на паузе.' : 'Работает программный симулятор; реального оборудования нет.'}`;
   const invalid = ['invalid-json', 'invalid-state', 'incompatible-schema'].includes(status.issue);
   return invalid
     ? 'Сохранённые данные повреждены или несовместимы. Исходная запись сохранена нетронутой; показана временная демомодель в памяти. Для восстановления предусмотрен программный сброс.'
     : 'localStorage недоступен или запись не удалась. Показаны демоданные в памяти; сохранение между переходами и перезагрузками не гарантируется.';
 }
 
-export function renderDataPage(store, documentRoot = document) {
+export function renderDataPage(store, documentRoot = document, simulator = null) {
   const page = documentRoot.body.dataset.page;
   const initial = store.getState();
   const picker = documentRoot.querySelector('[data-zone-select]');
@@ -108,6 +108,22 @@ export function renderDataPage(store, documentRoot = document) {
   storageNotice.className = 'notice';
   storageNotice.setAttribute('role', 'status');
   documentRoot.querySelector('main > .notice').after(storageNotice);
+  let simulationPanel;
+  if (simulator) {
+    simulationPanel = documentRoot.createElement('section');
+    simulationPanel.className = 'panel simulation-panel';
+    simulationPanel.setAttribute('aria-label', 'Управление учебной симуляцией');
+    simulationPanel.innerHTML = `<div class="panel-heading"><div><h2>Учебный симулятор</h2>
+      <p>Программные показания · оборудование не подключено</p></div><span class="badge badge-cyan" data-sim-status role="status"></span></div>
+      <div class="form-actions"><button type="button" class="button" data-sim-action="pause">Пауза</button>
+      <button type="button" class="button" data-sim-action="resume">Продолжить</button>
+      <button type="button" class="button" data-sim-action="step">Один шаг</button></div>
+      <p class="helper" data-sim-meta></p>`;
+    storageNotice.after(simulationPanel);
+    simulationPanel.querySelectorAll('[data-sim-action]').forEach((button) => {
+      button.addEventListener('click', () => simulator[button.dataset.simAction]());
+    });
+  }
   const fill = (selector, markup) => {
     const container = documentRoot.querySelector(selector);
     if (container) container.innerHTML = markup;
@@ -116,6 +132,14 @@ export function renderDataPage(store, documentRoot = document) {
   function render() {
     const state = store.getState();
     storageNotice.textContent = storageMessage(state, store.getStatus());
+    if (simulationPanel) {
+      const paused = state.simulation.paused;
+      simulationPanel.querySelector('[data-sim-status]').textContent = paused ? 'На паузе' : 'Работает';
+      simulationPanel.querySelector('[data-sim-action="pause"]').disabled = paused;
+      simulationPanel.querySelector('[data-sim-action="resume"]').disabled = !paused;
+      simulationPanel.querySelector('[data-sim-action="step"]').disabled = !paused;
+      simulationPanel.querySelector('[data-sim-meta]').textContent = `Интервал: ${state.settings.simulationIntervalMs / 1000} с · История: ${state.history.length} / ${HISTORY_LIMIT} срезов · Последнее измерение: ${state.simulation.lastTickAt ? time(state.simulation.lastTickAt) : 'ещё нет'}`;
+    }
     if (page === 'dashboard') {
       fill('[data-kpis]', kpiCards(state));
       fill('[data-zone-cards]', zoneCards(state));
