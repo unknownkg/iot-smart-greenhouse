@@ -3,7 +3,7 @@ import { createStore } from './store.js';
 import { renderDataPage } from './views.js';
 import { createSimulator } from './simulator.js';
 
-// Stage 3: one simulation controller per store; no actuator commands.
+// Stage 4: one simulator plus store-backed Manual controls; Auto is not implemented.
 initNavigation();
 const store = createStore();
 const simulator = createSimulator(store);

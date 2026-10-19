@@ -36,10 +36,10 @@ test('views display current model readings instead of embedded examples', () => 
   assert.match(rows, /18\.10\.2026/);
 });
 
-test('control renders six disabled switches for the selected zone and no command buttons', () => {
+test('control renders six manual switches for the selected zone only', () => {
   const cards = deviceCards(state(), 'ZONE-02');
   assert.equal((cards.match(/role="switch"/g) ?? []).length, 6);
-  assert.equal((cards.match(/ disabled/g) ?? []).length, 6);
+  assert.equal((cards.match(/ disabled/g) ?? []).length, 0);
   assert.equal((cards.match(/aria-checked="false"/g) ?? []).length, 6);
   assert.match(cards, /ZONE-02-D-pump/);
   assert.doesNotMatch(cards, /ZONE-01-D/);

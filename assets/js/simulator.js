@@ -1,14 +1,28 @@
 import { SENSOR_TYPES } from './data.js';
+import { deviceBlockReason } from './safety.js';
 
-// Natural drift only. Future actuator influence belongs here, using state.devices;
-// the store remains the sole owner of readings, timestamps and history.
+// Natural drift plus small educational actuator effects, never device commands.
 const STEPS = Object.freeze({ temperature: 0.2, humidity: 0.5, soil: 0.2, light: 200, co2: 8 });
 export function simulateReadings(state, { random = Math.random } = {}) {
+  const active = (zoneId, type) => state.devices.some((device) => device.zoneId === zoneId && device.type === type
+    && device.isOn && !deviceBlockReason(state, device));
   return state.sensors.filter((sensor) => sensor.status === 'online').map((sensor) => {
     const draw = random();
     if (!Number.isFinite(draw) || draw < 0 || draw > 1) throw new RangeError('Invalid random sample');
     const type = SENSOR_TYPES.find((item) => item.type === sensor.type);
-    const delta = sensor.type === 'waterLevel' ? -(0.02 + draw * 0.06) : (draw * 2 - 1) * STEPS[sensor.type];
+    let delta = sensor.type === 'waterLevel' ? -(0.02 + draw * 0.06) : (draw * 2 - 1) * STEPS[sensor.type];
+    if (active(sensor.zoneId, 'pump')) {
+      if (sensor.type === 'soil') delta += 1;
+      if (sensor.type === 'waterLevel') delta -= 0.25;
+    }
+    if (sensor.type === 'temperature') {
+      if (active(sensor.zoneId, 'fan')) delta -= 0.4;
+      if (active(sensor.zoneId, 'heater')) delta += 0.4;
+      if (active(sensor.zoneId, 'vent')) delta -= 0.1;
+    }
+    if (sensor.type === 'light' && active(sensor.zoneId, 'growLight')) delta += 800;
+    if (sensor.type === 'humidity' && active(sensor.zoneId, 'humidifier')) delta += 0.8;
+    if (sensor.type === 'co2' && active(sensor.zoneId, 'vent')) delta -= 20;
     const decimals = sensor.type === 'waterLevel' ? 2 : ['light', 'co2'].includes(sensor.type) ? 0 : 1;
     const value = Math.min(type.max, Math.max(type.min, sensor.value + delta));
     return { id: sensor.id, value: +value.toFixed(decimals) };
