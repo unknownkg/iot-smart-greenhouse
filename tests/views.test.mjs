@@ -34,7 +34,7 @@ test('views display current model readings instead of embedded examples', () => 
   assert.match(rows, /63/);
   assert.equal((cards.match(/class="zone-card"/g) ?? []).length, 3);
   assert.equal((rows.match(/<tr>/g) ?? []).length, 18);
-  assert.match(cards, /Не рассчитан/);
+  assert.match(cards, /0 \/ 100/);
   assert.match(rows, /18\.10\.2026/);
 });
 

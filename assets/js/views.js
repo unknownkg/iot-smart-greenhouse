@@ -4,6 +4,8 @@ import { evaluateAutomation } from './automation.js';
 import { SCENARIOS } from './scenarios.js';
 import { bindSettingsForm } from './settings-form.js';
 import { bindMonitoringViews, recentEvents } from './monitoring-views.js';
+import { analyzeZone, RISK_LEVELS } from './analytics.js';
+import { bindAnalytics } from './analytics-views.js';
 
 const escape = (value) => String(value).replace(/[&<>"']/g, (character) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -53,7 +55,7 @@ function kpiCards(state) {
   }).join('');
 }
 
-export function zoneCards(state, detailed = false) {
+export function zoneCards(state, detailed = false, storageStatus = {}) {
   return state.zones.map((zone) => {
     const values = readings(state, zone.id);
     const types = detailed ? SENSOR_TYPES : SENSOR_TYPES.filter((sensor) => ['temperature', 'humidity', 'waterLevel'].includes(sensor.type));
@@ -61,11 +63,12 @@ export function zoneCards(state, detailed = false) {
     const online = state.sensors.filter((sensor) => sensor.zoneId === zone.id && sensor.status === 'online').length;
     const on = state.devices.filter((device) => device.zoneId === zone.id && device.isOn).length;
     const activeAlerts = state.alerts.filter((a) => a.zoneId === zone.id && a.status === 'open');
+    const risk = analyzeZone(state, zone.id, storageStatus);
     return `<article class="zone-card"><div class="zone-head"><div>
       <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Симуляция', 'cyan')}</div>
       <div class="zone-visual">${icon('greenhouse', 'greenhouse')}<div><small>Влажность почвы</small>
       <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Учебное измерение</span></div></div>
-      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Auto' : 'Manual'}</dd></div><div><dt>Устройства</dt><dd>${on} / 6 устройств ON</dd></div><div><dt>Alerts</dt><dd class="${activeAlerts.some((a) => a.severity === 'critical') ? 'status-critical' : activeAlerts.length ? 'status-warning' : 'muted'}">${activeAlerts.length} активных</dd></div><div><dt>Риск</dt><dd class="muted">Не рассчитан</dd></div></dl>
+      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Auto' : 'Manual'}</dd></div><div><dt>Устройства</dt><dd>${on} / 6 устройств ON</dd></div><div><dt>Alerts</dt><dd class="${activeAlerts.some((a) => a.severity === 'critical') ? 'status-critical' : activeAlerts.length ? 'status-warning' : 'muted'}">${activeAlerts.length} активных</dd></div><div><dt>Risk Score · учебный</dt><dd class="${risk.level === 'critical' ? 'status-critical' : ['high', 'moderate'].includes(risk.level) ? 'status-warning' : 'muted'}">${risk.score === null ? '—' : `${risk.score} / 100`}<br><small>${RISK_LEVELS[risk.level]}${risk.complete ? '' : ' · неполные данные'}</small></dd></div></dl>
       <div class="zone-footer"><span>${online} / 6 online · симуляция</span><span>${state.simulation.paused ? 'На паузе' : `Шаг ${state.settings.simulationIntervalMs / 1000} с`}</span></div></article>`;
   }).join('');
 }
@@ -152,6 +155,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
   }
   const settingsForm = bindSettingsForm(store, documentRoot);
   const monitoring = bindMonitoringViews(store, documentRoot);
+  const analytics = bindAnalytics(store, documentRoot);
   const storageNotice = documentRoot.createElement('div');
   storageNotice.className = 'notice';
   storageNotice.setAttribute('role', 'status');
@@ -193,11 +197,11 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
     }
     if (page === 'dashboard') {
       fill('[data-kpis]', kpiCards(state));
-      fill('[data-zone-cards]', zoneCards(state));
+      fill('[data-zone-cards]', zoneCards(state, false, status));
       fill('[data-device-summary]', deviceSummary(state));
       fill('[data-recent-events]', recentEvents(state));
     } else if (page === 'zones') {
-      fill('[data-zone-cards]', zoneCards(state, true));
+      fill('[data-zone-cards]', zoneCards(state, true, status));
       fill('[data-sensor-rows]', sensorRows(state, selectedZone));
     } else if (page === 'sensors') {
       fill('[data-sensor-rows]', sensorRows(state));
@@ -216,8 +220,10 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       settingsForm.render(selectedZone);
     } else if (page === 'alerts' || page === 'event-log') {
       monitoring.render();
+    } else if (page === 'analytics') {
+      analytics.render(selectedZone);
     }
   }
   render();
-  return store.subscribe(render);
+  return Object.assign(store.subscribe(render), { suspend: () => analytics?.suspend() });
 }

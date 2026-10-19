@@ -1,0 +1,17 @@
+{
+  "name": "chart.js",
+  "version": "4.5.1",
+  "metadata": "https://registry.npmjs.org/chart.js/4.5.1",
+  "tarball": "https://registry.npmjs.org/chart.js/-/chart.js-4.5.1.tgz",
+  "packageIntegrity": "sha512-GIjfiT9dbmHRiYi6Nl2yFCq7kkwdkp1W/lp2J99rX0yo9tgJGn3lKQATztIjb5tVtevcBtIdICNWqlq5+E8/Pw==",
+  "bundleSha256": "48444a82d4edcb5bec0f1965faacdde18d9c17db3063d042abada2f705c9f54a",
+  "license": "MIT",
+  "sourceMapSha256": "8c328df49d295935c81d64d3b36d6ac1c20c385f1ba5b4df3ec12a26b3d64d9b",
+  "bundledColor": {
+    "version": "0.3.2",
+    "metadata": "https://registry.npmjs.org/@kurkle%2fcolor/0.3.2",
+    "tarball": "https://registry.npmjs.org/@kurkle/color/-/color-0.3.2.tgz",
+    "packageIntegrity": "sha512-fuscdXJ9G1qb7W8VdHi+IwRqij3lBkosAm4ydQtEmbY58OzHXqQhvlxqEkoz0yssNVn38bcpRWgA9PP+OGoisw==",
+    "license": "LICENSE-color.md"
+  }
+}
