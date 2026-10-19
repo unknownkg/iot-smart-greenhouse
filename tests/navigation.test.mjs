@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { initNavigation } from '../assets/js/ui.js';
 
-// Substitute only document/window events and focus; run the real navigation controller.
+// Подменяются только события document/window и фокус; используется настоящий контроллер навигации.
 function fixture(desktopInitially = true) {
   const eventTarget = (extra = {}) => ({ ...extra, listeners: new Map(),
     addEventListener(type, listener) { this.listeners.set(type, listener); },

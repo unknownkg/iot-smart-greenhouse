@@ -6,7 +6,7 @@ import { createStore } from '../assets/js/store.js';
 
 const FIRST = '2026-10-18T12:00:00.000Z';
 const LATER = '2026-10-18T12:10:00.000Z';
-// Only the browser's storage boundary is substituted; validation and store are real.
+// Подменяется только хранилище браузера; проверка данных и хранилище состояния выполняются настоящим кодом.
 function memoryStorage() {
   const data = new Map();
   return {

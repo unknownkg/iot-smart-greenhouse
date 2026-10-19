@@ -1,4 +1,4 @@
-// Only presentation and navigation live here. Domain modules join in later stages.
+// Здесь размещена только логика представления и навигации.
 export function initNavigation() {
   const sidebar = document.querySelector('#sidebar');
   const toggle = document.querySelector('[data-menu-toggle]');

@@ -1,3 +1,4 @@
+import { zoneLabel } from './presentation.js';
 import { historyValue } from './analytics.js';
 import { sensorBlockReason } from './safety.js';
 
@@ -28,8 +29,8 @@ export function chartConfigurations(state, zoneId) {
   const zone = state.zones.find((item) => item.id === zoneId);
   return [...CHART_SERIES, { key: 'water', title: 'Текущая вода по зонам', unit: '%', color: ['#5edf8b', '#79cde4', '#c4a2ec'] }].map((series) => {
     const bar = series.key === 'water';
-    return { key: series.key, type: bar ? 'bar' : 'line', data: { labels: [...data[series.key].labels], datasets: [{
-      label: `${bar ? 'Текущая модель' : zone?.name ?? zoneId} · ${series.title}, ${series.unit}`,
+    return { key: series.key, type: bar ? 'bar' : 'line', data: { labels: bar ? data.water.labels.map(zoneLabel) : [...data[series.key].labels], datasets: [{
+      label: `${bar ? 'Текущая модель' : zoneLabel(zone?.name ?? zoneId)} · ${series.title}, ${series.unit}`,
       data: [...data[series.key].values], borderColor: series.color, backgroundColor: series.color,
       borderWidth: 2, pointRadius: data[series.key].values.length <= 1 ? 3 : 1, pointHoverRadius: 4,
       tension: 0, spanGaps: false,
@@ -40,7 +41,7 @@ export function chartConfigurations(state, zoneId) {
       scales: {
         x: { type: 'category', title: { display: true, text: bar ? 'Зона' : 'Время измерения · местное', color: '#96a2b4' },
           grid: { color: 'rgba(255,255,255,0.06)' }, ticks: { color: '#96a2b4', maxTicksLimit: bar ? 3 : 5, maxRotation: 0,
-            // Chart.js recalculates autoSkip on resize; only labels are skipped, never samples.
+            // Chart.js пересчитывает autoSkip при изменении размера; пропускаются только подписи, а не измерения.
             ...(bar ? {} : { autoSkip: true, autoSkipPadding: 48 }),
             callback(value) { const label = this.getLabelForValue(value); return bar ? label : timestampLabel(label).split(' ').at(-1); } } },
         y: { title: { display: true, text: series.unit, color: '#96a2b4' }, grid: { color: 'rgba(255,255,255,0.08)' },
@@ -70,11 +71,11 @@ export function loadChart(documentRoot = document) {
   return ready;
 }
 
-// Only this adapter owns canvas instances; the store remains the only history owner.
+// Экземплярами графиков управляет только этот адаптер; единственный источник истории — хранилище состояния.
 export function createCharts(root, { load = () => loadChart(root.ownerDocument ?? root), onStatus = () => {} } = {}) {
   const instances = new Map(); let revision = 0;
   function release() {
-    for (const chart of instances.values()) { try { chart.destroy(); } catch { /* Remaining charts must still be released. */ } }
+    for (const chart of instances.values()) { try { chart.destroy(); } catch { /* Остальные экземпляры графиков также нужно освободить. */ } }
     instances.clear();
   }
   return Object.freeze({
@@ -101,13 +102,13 @@ export function createCharts(root, { load = () => loadChart(root.ownerDocument ?
             let created;
             try { created = new Chart(canvas, config); }
             catch (error) {
-              // Initialization may throw after Chart.js has already claimed the canvas.
+              // Ошибка инициализации может возникнуть после регистрации canvas в Chart.js.
               const partial = Chart.getChart?.(canvas);
               if (partial) instances.set(key, partial);
               throw error;
             }
             instances.set(key, created);
-            // Chart.js can return a failed instance rather than throw when canvas has no context.
+            // Если у canvas нет контекста, Chart.js может вернуть нерабочий экземпляр без исключения.
             if (created.ctx === null || created.canvas === null) throw new Error('Canvas context unavailable');
           }
         }

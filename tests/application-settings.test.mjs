@@ -68,7 +68,7 @@ test('cancelled reset has no storage, timer or state effects and lists every res
   const settings = createApplicationSettings(f.store, f.simulator, { confirmReset(message) { assert.equal(message, RESET_WARNING); return false; } });
   assert.equal(settings.reset().cancelled, true);
   assert.deepEqual(f.store.getState(), before); assert.deepEqual(f.counts(), counts); assert.deepEqual([...f.jobs.keys()], jobs);
-  for (const word of ['датчик', 'настрой', 'устройств', 'сценари', 'Alerts', 'Event Log', 'истори']) assert.ok(RESET_WARNING.includes(word));
+  for (const word of ['датчик', 'настрой', 'устройств', 'сценари', 'предупрежден', 'журнал событий', 'истори']) assert.ok(RESET_WARNING.includes(word));
 });
 
 test('confirmed reset only removes the application key, releases old timer, applies safety and reuses the store/controller', () => {

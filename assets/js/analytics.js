@@ -1,18 +1,18 @@
 import { SENSOR_TYPES } from './data.js';
 import { sensorBlockReason, pumpBlockReason } from './safety.js';
 
-// First five weights are the teacher's example; the rest are explicit teaching extensions.
+// Первые пять весов взяты из примера методички; остальные — явно обозначенные учебные расширения.
 export const RISK_WEIGHTS = Object.freeze({ 'temperature-high': 25, 'temperature-low': 20,
   'soil-low': 25, 'water-critical': 30, 'co2-high': 15, 'soil-high': 10,
   'humidity-low': 10, 'humidity-high': 10, 'light-low': 10, unavailable: 10, 'water-unavailable': 30 });
 export const JUMP_FLOORS = Object.freeze({ temperature: 2, humidity: 5, soil: 5, light: 3000, co2: 150, waterLevel: 2 });
-export const RISK_LEVELS = Object.freeze({ low: 'Low · низкий', moderate: 'Moderate · умеренный', high: 'High · высокий',
-  critical: 'Critical · критический', unknown: 'Неполные данные' });
+export const RISK_LEVELS = Object.freeze({ low: 'Низкий', moderate: 'Умеренный', high: 'Высокий',
+  critical: 'Критический', unknown: 'Неполные данные' });
 
 const canonicalDate = (value) => typeof value === 'string' && Number.isFinite(Date.parse(value)) && new Date(value).toISOString() === value;
 const readingText = (value, unit) => `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(value)} ${unit}`;
 
-// Never forward-fill an offline/missing/invalid historical sample.
+// Не заполняем пропуски прежним значением, если измерение отсутствует, недостоверно или датчик отключён.
 export function historyValue(sample, sensor) {
   if (!sensor || !sample || !canonicalDate(sample.timestamp) || !Array.isArray(sample.sensors)) return null;
   const definition = SENSOR_TYPES.find((type) => type.type === sensor.type);

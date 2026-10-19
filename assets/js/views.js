@@ -1,3 +1,4 @@
+import { displayText, zoneLabel } from './presentation.js';
 import { SENSOR_TYPES, DEVICE_TYPES, HISTORY_LIMIT } from './data.js';
 import { deviceBlockReason } from './safety.js';
 import { evaluateAutomation } from './automation.js';
@@ -24,7 +25,7 @@ const reading = (sensor) => `${format(sensor.value)} ${escape(sensor.unit)}${sen
 
 export function modeLabel(state) {
   const modes = new Set(state.zones.map((zone) => zone.mode));
-  return modes.size > 1 ? 'Mixed' : modes.has('auto') ? 'Auto' : 'Manual';
+  return modes.size > 1 ? 'Смешанный' : modes.has('auto') ? 'Авто' : 'Ручной';
 }
 
 export function buildDashboardModel(state) {
@@ -44,14 +45,14 @@ function kpiCards(state) {
     ['humidity', 'Влажность воздуха', 'water', '%'],
     ['soil', 'Влажность почвы', 'soil', '%'],
     ['waterLevel', 'Запас воды', 'tank', '%'],
-    ['alerts', 'Активные alerts', 'alert', ''],
-    ['online', 'Датчиков online', 'sensor', '/ 18'],
+    ['alerts', 'Активные предупреждения', 'alert', ''],
+    ['online', 'Датчиков на связи', 'sensor', '/ 18'],
   ];
   return definitions.map(([type, name, symbol, unit]) => {
     const unavailable = model[type] === null;
     const value = unavailable ? '—' : format(model[type]);
-    const caption = type === 'alerts' ? `${model.warning} Warning · ${model.critical} Critical` : type === 'online'
-      ? 'Виртуальные датчики' : unavailable ? 'Нет online-данных' : 'Среднее online · симуляция';
+    const caption = type === 'alerts' ? `Предупреждений: ${model.warning} · Критических: ${model.critical}` : type === 'online'
+      ? 'Виртуальные датчики' : unavailable ? 'Нет данных от датчиков на связи' : 'Среднее по датчикам на связи · симуляция';
     return `<article class="kpi-card"><div class="kpi-top"><span>${name}</span>${icon(symbol)}</div>
       <p class="kpi-value mono${type === 'alerts' ? model.critical ? ' status-critical' : model.warning ? ' status-warning' : '' : ''}">${value}<span>${unit}</span></p><p class="kpi-bottom">${caption}</p></article>`;
   }).join('');
@@ -69,11 +70,11 @@ export function zoneCards(state, detailed = false, storageStatus = {}, query = '
     const activeAlerts = state.alerts.filter((a) => a.zoneId === zone.id && a.status === 'open');
     const risk = analyzeZone(state, zone.id, storageStatus);
     return `<article class="zone-card" data-zone-id="${escape(zone.id)}"><div class="zone-head"><div>
-      <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zone.name)}</h3></div>${badge('Симуляция', 'cyan')}</div>
+      <p class="zone-id mono">${escape(zone.id)} / ${escape(zone.crop)}</p><h3>${escape(zoneLabel(zone.name))}</h3></div>${badge('Симуляция', 'cyan')}</div>
       <div class="zone-visual">${icon('greenhouse', 'greenhouse')}<div><small>Влажность почвы</small>
       <strong class="mono">${format(values.soil.value)}<span> ${escape(values.soil.unit)}${values.soil.status === 'offline' ? ' (устар.)' : ''}</span></strong><span>Учебное измерение</span></div></div>
-      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Auto' : 'Manual'}</dd></div><div><dt>Устройства</dt><dd>${on} / 6 устройств ON</dd></div><div><dt>Alerts</dt><dd class="${activeAlerts.some((a) => a.severity === 'critical') ? 'status-critical' : activeAlerts.length ? 'status-warning' : 'muted'}">${activeAlerts.length} активных</dd></div><div><dt>Risk Score · учебный</dt><dd class="${risk.level === 'critical' ? 'status-critical' : ['high', 'moderate'].includes(risk.level) ? 'status-warning' : 'muted'}">${risk.score === null ? '—' : `${risk.score} / 100`}<br><small>${RISK_LEVELS[risk.level]}${risk.complete ? '' : ' · неполные данные'}</small></dd></div></dl>
-      <div class="zone-footer"><span>${online} / 6 online · симуляция</span><span>${state.simulation.paused ? 'На паузе' : `Шаг ${state.settings.simulationIntervalMs / 1000} с`}</span></div></article>`;
+      <dl class="zone-metrics">${metrics}<div><dt>Режим</dt><dd>${zone.mode === 'auto' ? 'Авто' : 'Ручной'}</dd></div><div><dt>Устройства</dt><dd>Включено ${on} из 6</dd></div><div><dt>Предупреждения</dt><dd class="${activeAlerts.some((a) => a.severity === 'critical') ? 'status-critical' : activeAlerts.length ? 'status-warning' : 'muted'}">${activeAlerts.length} активных</dd></div><div><dt>Индекс риска · учебный</dt><dd class="${risk.level === 'critical' ? 'status-critical' : ['high', 'moderate'].includes(risk.level) ? 'status-warning' : 'muted'}">${risk.score === null ? '—' : `${risk.score} / 100`}<br><small>${RISK_LEVELS[risk.level]}${risk.complete ? '' : ' · неполные данные'}</small></dd></div></dl>
+      <div class="zone-footer"><span>${online} / 6 на связи · симуляция</span><span>${state.simulation.paused ? 'На паузе' : `Шаг ${state.settings.simulationIntervalMs / 1000} с`}</span></div></article>`;
   }).join('');
 }
 
@@ -83,10 +84,10 @@ export function sensorRows(state, zoneId, filters = {}) {
   return sensors.map((sensor) => {
     const type = SENSOR_TYPES.find((item) => item.type === sensor.type);
     const zone = state.zones.find((item) => item.id === sensor.zoneId);
-    return `<tr><td>${type.label}<br><small class="muted mono">${escape(sensor.id)}</small></td>
-      <td>${escape(zone.name)}<br><small class="muted">${escape(zone.id)}</small></td>
+    return `<tr><td>${type.name}<br><small class="muted mono">${escape(sensor.id)}</small></td>
+      <td>${escape(zoneLabel(zone.name))}<br><small class="muted">${escape(zone.id)}</small></td>
       <td class="mono">${format(sensor.value)}${sensor.status === 'offline' ? '<br><small class="muted">Устаревшее</small>' : ''}</td><td>${escape(sensor.unit)}</td>
-      <td>${badge(`${sensor.status} · симуляция`, sensor.status === 'online' ? 'green' : 'yellow')}</td>
+      <td>${badge(`${displayText(sensor.status)} · симуляция`, sensor.status === 'online' ? 'green' : 'yellow')}</td>
       <td><time datetime="${escape(sensor.lastUpdatedAt)}">${time(sensor.lastUpdatedAt)}</time></td></tr>`;
   }).join('');
 }
@@ -102,10 +103,10 @@ export function deviceCards(state, zoneId) {
     return `<article class="device-card" data-device-id="${escape(device.id)}"><div class="device-top">${icon(type.icon)}
       <button class="switch" type="button" role="switch" aria-checked="${device.isOn}" data-device-command="${escape(device.id)}"
       aria-label="${type.name}: ${device.isOn ? 'выключить' : 'включить'}" aria-describedby="reason-${escape(device.id)}"${disabled ? ' disabled' : ''}></button></div>
-      <h3>${type.name}</h3><p>${type.description}</p>${badge(reason ? 'BLOCKED · блокировка' : device.isOn ? 'ON · включено' : 'OFF · выключено', reason ? 'yellow' : device.isOn ? 'green' : '')}
+      <h3>${type.name}</h3><p>${type.description}</p>${badge(reason ? 'Блокировка' : device.isOn ? 'Включено' : 'Выключено', reason ? 'yellow' : device.isOn ? 'green' : '')}
       <dl class="device-meta"><div><dt>Источник:</dt><dd>${sources[device.source]}</dd></div>
       <div><dt>Изменено:</dt><dd><time datetime="${escape(device.changedAt)}">${time(device.changedAt)}</time></dd></div></dl>
-      <p class="helper" id="reason-${escape(device.id)}">${escape(reason ?? decisions[device.type]?.reason ?? 'Manual · учебная модель')}${automatic ? ' Ручное переключение недоступно в Auto.' : ''}</p></article>`;
+      <p class="helper" id="reason-${escape(device.id)}">${escape(displayText(reason ?? decisions[device.type]?.reason ?? 'Ручной режим · учебная модель'))}${automatic ? ' Ручное переключение недоступно в автоматическом режиме.' : ''}</p></article>`;
   }).join('');
 }
 
@@ -114,7 +115,7 @@ function deviceSummary(state) {
     const devices = state.devices.filter((device) => device.type === type.type);
     const blocked = devices.filter((device) => device.blockedReason).length;
     return `<div class="device-row">${icon(type.icon)}<strong>${type.name}</strong><span>
-      ${devices.filter((device) => device.isOn).length} / ${devices.length} ON${blocked ? ` · ${blocked} BLOCKED` : ''}</span></div>`;
+      ${devices.filter((device) => device.isOn).length} / ${devices.length} включено${blocked ? ` · ${blocked} заблокировано` : ''}</span></div>`;
   }).join('');
 }
 
@@ -134,7 +135,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
   let selectedZone = initial.zones[0].id;
   const report = (result) => {
     if (feedback) {
-      feedback.textContent = result.message;
+      feedback.textContent = displayText(result.message);
       feedback.dataset.outcome = result.ok ? 'success' : 'error';
     }
   };
@@ -152,7 +153,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
   documentRoot.querySelector('[data-apply-scenario]')?.addEventListener('click', () => report(store.applyScenario(selectedZone, scenarioPicker.value)));
   documentRoot.querySelector('[data-restore-scenario]')?.addEventListener('click', () => report(store.applyScenario(selectedZone, 'restore')));
   if (picker) {
-    picker.innerHTML = initial.zones.map((zone) => `<option value="${escape(zone.id)}">${escape(zone.name)} · ${escape(zone.id)}</option>`).join('');
+    picker.innerHTML = initial.zones.map((zone) => `<option value="${escape(zone.id)}">${escape(zoneLabel(zone.name))} · ${escape(zone.id)}</option>`).join('');
     picker.addEventListener('change', () => {
       selectedZone = picker.value;
       if (feedback) { feedback.textContent = 'Выбрана другая зона. Измерения и состояния устройств берутся из общей модели.'; delete feedback.dataset.outcome; }
@@ -165,7 +166,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
   const sensorZone = documentRoot.querySelector('[data-sensor-zone]');
   const sensorStatus = documentRoot.querySelector('[data-sensor-status]');
   const zoneSearch = documentRoot.querySelector('[data-zone-search]');
-  if (sensorZone) sensorZone.innerHTML = '<option value="">Все зоны</option>' + initial.zones.map((zone) => `<option value="${escape(zone.id)}">${escape(zone.name)}</option>`).join('');
+  if (sensorZone) sensorZone.innerHTML = '<option value="">Все зоны</option>' + initial.zones.map((zone) => `<option value="${escape(zone.id)}">${escape(zoneLabel(zone.name))}</option>`).join('');
   for (const input of [sensorSearch, zoneSearch].filter(Boolean)) input.addEventListener('input', render);
   for (const select of [sensorZone, sensorStatus].filter(Boolean)) select.addEventListener('change', render);
   const monitoring = bindMonitoringViews(store, documentRoot);
@@ -198,7 +199,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
   function render() {
     const state = store.getState();
     const status = store.getStatus();
-    storageNotice.textContent = `${storageMessage(state, status)}${status.safetyMessage ? ` Защита: ${status.safetyMessage}` : ''}`;
+    storageNotice.textContent = `${storageMessage(state, status)}${status.safetyMessage ? ` Защита: ${displayText(status.safetyMessage)}` : ''}`;
     const indicator = documentRoot.querySelector('[data-mode-indicator]');
     if (indicator) indicator.textContent = modeLabel(state);
     renderNotifications(state, documentRoot.querySelector('[data-notifications]'));
@@ -231,7 +232,7 @@ export function renderDataPage(store, documentRoot = document, simulator = null)
       }
       const zone = state.zones.find((item) => item.id === selectedZone);
       modePicker.value = zone.mode;
-      documentRoot.querySelector('[data-zone-mode-summary]').textContent = `${zone.name}: ${zone.mode === 'auto' ? 'Auto — правила применяются по порогам, ручные команды заблокированы.' : 'Manual — устройствами управляет оператор.'}`;
+      documentRoot.querySelector('[data-zone-mode-summary]').textContent = `${zoneLabel(zone.name)}: ${zone.mode === 'auto' ? 'Авто — правила применяются по порогам, ручные команды заблокированы.' : 'Ручной — устройствами управляет оператор.'}`;
     } else if (page === 'settings') {
       settingsForm.render(selectedZone);
       applicationSettings?.render();

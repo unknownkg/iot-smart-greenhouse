@@ -10,9 +10,13 @@
 .nav-link[aria-current='page'] { background: var(--green-soft); color: var(--text); border-color: var(--green-border); font-weight: 600; }
 .nav-link[aria-current='page'] .icon { color: var(--green); }
 .nav-link[aria-current='page']::after { content: ''; position: absolute; inset: 10px auto 10px -1px; width: 3px; border-radius: 2px; background: var(--green-bright); }
-.sidebar-foot { margin-top: auto; padding: 22px 12px 0; }
+.sidebar-foot { margin-top: auto; padding: 22px 12px 0; flex-shrink: 0; }
 .workspace-card { padding: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
 .workspace-card p { margin-top: 6px; font-size: 12px; color: var(--muted); }
+.project-credits { display: grid; gap: 12px; margin: 14px 0 0; padding-top: 14px; border-top: 1px solid var(--border); min-width: 0; }
+.project-credits dt { color: var(--muted); font-size: 12px; line-height: 1.5; }
+.project-credits > div:first-child dt { color: var(--green); }
+.project-credits dd { margin: 3px 0 0; color: var(--text); font-size: 13px; font-weight: 500; line-height: 1.5; white-space: normal; overflow-wrap: break-word; }
 .version { display: flex; justify-content: space-between; margin-top: 20px; font-size: 12px; color: var(--muted); letter-spacing: .6px; }
 .app-shell { margin-left: 244px; min-height: 100vh; }
 .topbar { min-height: 81px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; padding: 18px 32px; background: var(--sidebar-bg); }

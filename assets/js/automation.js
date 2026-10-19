@@ -1,7 +1,7 @@
 import { sensorBlockReason, pumpBlockReason } from './safety.js';
 import { humidityRecovery } from './data.js';
 
-// Pure decisions for one zone. Store owns all mutations, safety and persistence.
+// Чистый расчёт решений для одной зоны. Хранилище состояния отвечает за изменения, защиту и сохранение.
 export function evaluateAutomation(state, zoneId) {
   const zone = state.zones.find((item) => item.id === zoneId);
   if (zone?.mode !== 'auto') return {};

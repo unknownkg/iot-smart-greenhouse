@@ -37,7 +37,7 @@ for (const [id, sensorType, value, expectedDevice] of scenarios) {
     const readings = Object.fromEntries(Object.entries(f.store.getZoneReadings(ZONE)).map(([k, v]) => [k, v.value]));
     f.advance(); f.store.applyScenario(ZONE, id);
     assert.deepEqual(Object.fromEntries(Object.entries(f.store.getZoneReadings(ZONE)).map(([k, v]) => [k, v.value])), readings);
-    // The coherent sample refreshes timestamps, but never changes other-zone values.
+    // Согласованный срез обновляет время измерений, но не значения других зон.
     for (const [type, sensor] of Object.entries(other)) assert.equal(f.store.getZoneReadings('ZONE-01')[type].value, sensor.value);
     assert.equal(f.store.getState().simulation.paused, true);
     assert.equal(f.store.getState().history.length, 2);

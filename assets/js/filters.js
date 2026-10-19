@@ -2,7 +2,7 @@ import { SENSOR_TYPES } from './data.js';
 
 const normalize = (value) => String(value ?? '').trim().toLocaleLowerCase('ru-RU');
 
-// Derived views only: never remove or change model entities.
+// Фильтруем только представление, не изменяя и не удаляя сущности модели.
 export function filterSensors(state, { query = '', zoneId = '', status = '' } = {}) {
   const text = normalize(query);
   return state.sensors.filter((sensor) => {

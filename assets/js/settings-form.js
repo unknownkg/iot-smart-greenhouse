@@ -1,10 +1,11 @@
+import { displayText } from './presentation.js';
 import { SENSOR_TYPES } from './data.js';
 
 export const THRESHOLD_FIELDS = Object.freeze(SENSOR_TYPES.flatMap((type) =>
   (['temperature', 'humidity', 'soil'].includes(type.type) ? ['min', 'max'] : [type.type === 'waterLevel' ? 'critical' : type.type === 'co2' ? 'max' : 'min'])
     .map((key) => Object.freeze({ path: `${type.type}.${key}`, type: type.type, key, min: type.min, max: type.max, name: type.name, unit: type.unit }))));
 
-// Drafts are UI state only; the shared store remains the source of applied thresholds.
+// Черновики принадлежат интерфейсу; действующие пороги берутся из общего хранилища состояния.
 export function createSettingsEditor(store) {
   const drafts = new Map();
   const fromStore = (zoneId) => {
@@ -55,7 +56,7 @@ export function bindSettingsForm(store, root) {
   let zoneId = store.getState().zones[0].id;
   const errors = new Map();
   const show = (message, outcome = '') => {
-    feedback.textContent = message;
+    feedback.textContent = displayText(message);
     feedback.dataset.outcome = outcome;
   };
   for (const input of fields) {

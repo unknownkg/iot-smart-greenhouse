@@ -53,16 +53,16 @@ test('Auto cards disable all manual toggles including ON devices and explain rea
   const cards = deviceCards(store.getState(), 'ZONE-01');
   assert.equal((cards.match(/ disabled/g) ?? []).length, 6);
   assert.match(cards, /Автоматика/); assert.doesNotMatch(cards, /не запущена/);
-  assert.match(cards, /Auto: температура 30/);
-  assert.match(cards, /ON · включено/);
+  assert.match(cards, /Авто: температура 30/);
+  assert.match(cards, /Включено/);
 });
 
 test('Dashboard distinguishes Manual, Auto and Mixed; zone cards show each mode', () => {
   assert.equal(typeof views.modeLabel, 'function');
   const data = state();
-  assert.equal(views.modeLabel(data), 'Manual');
-  data.zones[0].mode = 'auto'; assert.equal(views.modeLabel(data), 'Mixed');
+  assert.equal(views.modeLabel(data), 'Ручной');
+  data.zones[0].mode = 'auto'; assert.equal(views.modeLabel(data), 'Смешанный');
   const cards = zoneCards(data);
-  assert.match(cards, /Auto/); assert.match(cards, /Manual/);
-  data.zones.forEach((zone) => { zone.mode = 'auto'; }); assert.equal(views.modeLabel(data), 'Auto');
+  assert.match(cards, /Авто/); assert.match(cards, /Ручной/);
+  data.zones.forEach((zone) => { zone.mode = 'auto'; }); assert.equal(views.modeLabel(data), 'Авто');
 });

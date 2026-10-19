@@ -102,7 +102,7 @@ export function validateState(state) {
 }
 
 function resolveStorage(storage) {
-  // Access itself can throw when browser storage is denied.
+  // При запрете хранилища браузером исключение возможно уже при обращении к нему.
   return storage === undefined ? globalThis.localStorage : storage;
 }
 
@@ -123,7 +123,7 @@ export function loadState(options = {}) {
   const now = options.now ?? (() => new Date().toISOString());
   const fallback = (issue) => {
     const state = createInitialState(now());
-    // Unknown saved pause state must not result in an automatic restart.
+    // Неизвестное сохранённое состояние паузы не должно приводить к автоматическому запуску.
     state.simulation.paused = true;
     return { state, status: { source: 'memory', persistent: false, issue } };
   };

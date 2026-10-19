@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { createStore } from '../assets/js/store.js';
 import { renderDataPage } from '../assets/js/views.js';
 
-// DOM boundary supplies nodes/events; the page renderer, store and subscriptions are real.
+// Подменяются узлы и события DOM; представление страницы, хранилище и подписки выполняются настоящим кодом.
 function fixture(page) {
   const node = (value = '') => ({ value, textContent: '', innerHTML: '', dataset: {}, attributes: {}, events: {},
     setAttribute(key, val) { this.attributes[key] = val; }, after() {},
@@ -28,27 +28,27 @@ test('Sensors native filter events and later store notifications keep one curren
   const rows = () => f.nodes.get('[data-sensor-rows]').innerHTML;
   assert.equal((rows().match(/<tr>/g) ?? []).length, 1); assert.match(rows(), /ZONE-02-S-temperature/);
   f.input('[data-sensor-status]', 'offline', 'change'); assert.match(rows(), /Нет датчиков/);
-  f.store.setSensorStatus('ZONE-02-S-temperature', 'offline'); assert.match(rows(), /offline/);
+  f.store.setSensorStatus('ZONE-02-S-temperature', 'offline'); assert.match(rows(), /Нет связи/);
   assert.equal(f.nodes.get('[data-sensor-search]').value, 'температура'); f.rendering();
 });
 
 test('Zones search filters cards without removing entities or losing independently selected details', () => {
   const f = fixture('zones'); f.input('[data-zone-search]', 'Greens');
-  assert.doesNotMatch(f.nodes.get('[data-zone-cards]').innerHTML, /Tomatoes/);
-  assert.match(f.nodes.get('[data-zone-cards]').innerHTML, /Greens/);
-  assert.match(f.nodes.get('[data-sensor-rows]').innerHTML, /Tomatoes/);
-  f.input('[data-zone-select]', 'ZONE-02', 'change'); assert.match(f.nodes.get('[data-sensor-rows]').innerHTML, /Cucumbers/);
+  assert.doesNotMatch(f.nodes.get('[data-zone-cards]').innerHTML, /Томаты/);
+  assert.match(f.nodes.get('[data-zone-cards]').innerHTML, /Зелень/);
+  assert.match(f.nodes.get('[data-sensor-rows]').innerHTML, /Томаты/);
+  f.input('[data-zone-select]', 'ZONE-02', 'change'); assert.match(f.nodes.get('[data-sensor-rows]').innerHTML, /Огурцы/);
   f.input('[data-zone-search]', 'no zone'); assert.match(f.nodes.get('[data-zone-cards]').innerHTML, /Нет зон/);
   assert.equal(f.store.getState().zones.length, 3); f.rendering();
 });
 
 test('Dashboard renders separate real Alerts and Event Log while topbar count follows recovery', () => {
   const f = fixture('dashboard'); f.advance(); f.store.applyScenario('ZONE-01', 'low-water');
-  assert.match(f.nodes.get('[data-recent-alerts]').innerHTML, /Critical/);
-  assert.match(f.nodes.get('[data-recent-events]').innerHTML, /EVENT|Предупреждение|Critical/);
+  assert.match(f.nodes.get('[data-recent-alerts]').innerHTML, /Критическ/);
+  assert.match(f.nodes.get('[data-recent-events]').innerHTML, /Включение|Предупреждение|Критическ/);
   assert.match(f.nodes.get('[data-notifications]').textContent, /2/);
   f.advance(); f.store.applyScenario('ZONE-01', 'restore');
-  assert.match(f.nodes.get('[data-recent-alerts]').innerHTML, /Resolved/);
+  assert.match(f.nodes.get('[data-recent-alerts]').innerHTML, /Устранено/);
   assert.match(f.nodes.get('[data-notifications]').textContent, /0/); f.rendering();
 });
 

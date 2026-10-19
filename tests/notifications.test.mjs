@@ -14,8 +14,8 @@ test('recent Alerts are actual Open records first followed by recent Resolved, s
   f.advance(); f.store.applyScenario('ZONE-01', 'low-water');
   const state = f.store.getState(); const before = structuredClone(state);
   const html = recentAlerts(state);
-  assert.match(html, /Critical/); assert.match(html, /Tomatoes/); assert.match(html, /Open/); assert.match(html, /Resolved/);
-  assert.ok(html.indexOf('Open') < html.indexOf('Resolved')); assert.match(html, /Вода/);
+  assert.match(html, /Критическ/); assert.match(html, /Томаты/); assert.match(html, /Активно/); assert.match(html, /Устранено/);
+  assert.ok(html.indexOf('Активно') < html.indexOf('Устранено')); assert.match(html, /Вода/);
   assert.deepEqual(state, before); assert.ok(state.events.length > state.alerts.length);
 });
 
@@ -33,9 +33,9 @@ test('Notifications derive active counts/severity and recover to a calm normal s
   f.store.subscribe((state) => renderNotifications(state, link));
   f.advance(); f.store.applyScenario('ZONE-01', 'overheat');
   assert.match(link.className, /badge-yellow/); assert.match(link.textContent, /1/);
-  assert.match(link.attributes['aria-label'], /Warning: 1/);
+  assert.match(link.attributes['aria-label'], /Предупреждений: 1/);
   f.advance(); f.store.applyScenario('ZONE-01', 'low-water');
-  assert.match(link.className, /badge-red/); assert.match(link.attributes['aria-label'], /Critical: 2/);
+  assert.match(link.className, /badge-red/); assert.match(link.attributes['aria-label'], /Критических: 2/);
   f.advance(); f.store.applyScenario('ZONE-01', 'restore');
   assert.match(link.className, /badge-green/); assert.match(link.textContent, /0/);
   const before = f.store.getState(); const writes = f.writes();

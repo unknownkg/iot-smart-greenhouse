@@ -47,7 +47,7 @@ test('empty history stays empty, water bar satisfies teacher requirement and all
   }
 });
 
-// Substitute only the canvas/Chart drawing boundary; data preparation and adapter are real.
+// Подменяется только отрисовка canvas/Chart; подготовка данных и адаптер выполняются настоящим кодом.
 function boundary(loadOverride = null) {
   const nodes = new Map(); const live = new Set(); const status = [];
   const root = { querySelector(selector) { if (!nodes.has(selector)) nodes.set(selector, { textContent: '' }); return nodes.get(selector); } };
@@ -64,7 +64,7 @@ function boundary(loadOverride = null) {
 test('adapter reuses five instances and switches actual datasets on zone changes; teardown releases canvases', async () => {
   const b = boundary(); const state = data();
   await b.charts.render(state, 'ZONE-01'); const instances = [...b.live]; assert.equal(instances.length, 5);
-  assert.match(b.summaryWater(), /Tomatoes: 72 %/);
+  assert.match(b.summaryWater(), /Томаты: 72 %/);
   await b.charts.render(state, 'ZONE-02'); assert.deepEqual([...b.live], instances);
   assert.deepEqual(instances[0].data.datasets[0].data, [25.2, 25.2, 25.2]);
   b.charts.destroy(); assert.equal(b.live.size, 0);
@@ -155,7 +155,7 @@ test('history time labels keep readable spacing when the actual Chart.js layout 
     ...state.history[0], timestamp: new Date(Date.parse(FIRST) + index * 5000).toISOString(),
   }));
   const before = structuredClone(state);
-  // Only canvas drawing/font metrics are substituted; the pinned UMD performs layout and autoSkip.
+  // Подменяются только отрисовка canvas и метрики шрифта; раскладку и autoSkip выполняет закреплённая UMD-версия.
   for (const width of [298, 305, 467, 743]) {
     for (const config of chartConfigurations(state, 'ZONE-01').filter((item) => item.type === 'line')) {
       const canvas = { width, height: 260 };

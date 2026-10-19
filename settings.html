@@ -3,7 +3,7 @@
 <head>
  <meta charset="utf-8">
  <meta name="viewport" content="width=device-width, initial-scale=1">
- <meta name="description" content="IoT Smart Greenhouse — Настройки. Учебный каркас интерфейса мониторинга теплицы.">
+ <meta name="description" content="IoT Smart Greenhouse — Настройки. Учебная система мониторинга и управления теплицей.">
  <meta name="theme-color" content="#0b1118">
  <title>Настройки — IoT Smart Greenhouse</title>
  <link rel="icon" href="assets/img/icons.svg" type="image/svg+xml">
@@ -13,35 +13,35 @@
 <body data-page="settings">
  <a class="skip-link" href="#main">К содержимому</a>
  <aside class="sidebar" id="sidebar" aria-label="Главная навигация">
-  <a class="brand" href="index.html" aria-label="IoT Smart Greenhouse — главная"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#leaf"></use></svg></span><span><strong>Smart Greenhouse</strong><small>IoT CONTROL CENTER</small></span></a>
+  <a class="brand" href="index.html" aria-label="IoT Smart Greenhouse — главная"><span class="brand-mark"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#leaf"></use></svg></span><span><strong>Smart Greenhouse</strong><small>Центр управления</small></span></a>
   <p class="nav-label">РАБОЧЕЕ ПРОСТРАНСТВО</p>
   <nav aria-label="Разделы приложения"><ul class="nav-list"><li><a class="nav-link" href="index.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#dashboard"></use></svg><span>Обзор системы</span></a></li><li><a class="nav-link" href="zones.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#zones"></use></svg><span>Зоны</span></a></li><li><a class="nav-link" href="sensors.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#sensor"></use></svg><span>Датчики</span></a></li><li><a class="nav-link" href="control.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#control"></use></svg><span>Управление</span></a></li><li><a class="nav-link" href="alerts.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#alert"></use></svg><span>Предупреждения</span></a></li><li><a class="nav-link" href="analytics.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#chart"></use></svg><span>Аналитика</span></a></li><li><a class="nav-link" href="settings.html" aria-current="page"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#settings"></use></svg><span>Настройки</span></a></li><li><a class="nav-link" href="event-log.html"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#log"></use></svg><span>Журнал событий</span></a></li></ul></nav>
-  <div class="sidebar-foot"><div class="workspace-card"><span class="badge badge-green">Учебный стенд</span><p>Этап 8 · Финальная проверка<br>Оборудование не подключено</p></div><div class="version"><span class="mono">SG / 001</span><span>PROTOTYPE v0.8</span></div></div>
+  <div class="sidebar-foot"><div class="workspace-card"><span class="badge badge-green">Учебный стенд</span><p>Учебный проект<br>Оборудование не подключено</p></div><dl class="project-credits" aria-label="Авторство проекта"><div><dt>Автор проекта</dt><dd>Машуров Артур Геннадьевич</dd></div><div><dt>Соавтор проекта</dt><dd>Каракашева Алина Таалайбековна</dd></div></dl><div class="version"><span class="mono">SG / 001</span><span>Учебный проект</span></div></div>
  </aside>
  <button class="sidebar-backdrop" type="button" data-menu-backdrop aria-label="Закрыть меню" tabindex="-1"></button>
  <div class="app-shell">
-  <header class="topbar"><div class="topbar-group"><button class="icon-button menu-button" type="button" data-menu-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#menu"></use></svg></button><div><p class="topbar-title">IoT Smart Greenhouse</p><p class="topbar-subtitle">Лаборатория интеллектуального растениеводства</p></div></div><div class="topbar-actions"><a class="badge notifications-link" href="alerts.html" data-notifications aria-label="Загрузка активных предупреждений. Открыть страницу предупреждений.">Уведомления · …</a><span class="badge badge-cyan"><span class="dot"></span><span class="system-label">Система · </span>Демо</span><span class="badge " data-mode-indicator>Manual</span><span class="divider"></span><div class="profile"><span class="avatar" aria-hidden="true">ОП</span><div class="profile-text">Оператор<small>Демонстрационный профиль</small></div></div></div></header>
-  <main id="main" tabindex="-1"><div class="page-heading"><div><p class="eyebrow">МОНИТОРИНГ ТЕПЛИЦЫ / Settings</p><h1>Настройки</h1><p class="description">Редактирование порогов каждой зоны и применение правил Auto.</p></div><div class="heading-meta">ПРОЕКТНЫЙ КОНТУР<strong class="mono">03 зоны / 18 датчиков</strong></div></div>
-  <div class="notice"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#info"></use></svg><p><strong>Учебная система · этап 8.</strong> Симулируемые показания, Auto и Manual виртуальных устройств. Реального оборудования нет; пороги и сценарии учебные.</p></div>
+  <header class="topbar"><div class="topbar-group"><button class="icon-button menu-button" type="button" data-menu-toggle aria-controls="sidebar" aria-expanded="false" aria-label="Открыть меню"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#menu"></use></svg></button><div><p class="topbar-title">IoT Smart Greenhouse</p><p class="topbar-subtitle">Лаборатория интеллектуального растениеводства</p></div></div><div class="topbar-actions"><a class="badge notifications-link" href="alerts.html" data-notifications aria-label="Загрузка активных предупреждений. Открыть страницу предупреждений.">Уведомления · …</a><span class="badge badge-cyan"><span class="dot"></span><span class="system-label">Система · </span>Демо</span><span class="badge " data-mode-indicator>Ручной</span><span class="divider"></span><div class="profile"><span class="avatar" aria-hidden="true">ОП</span><div class="profile-text">Оператор<small>Демонстрационный профиль</small></div></div></div></header>
+  <main id="main" tabindex="-1"><div class="page-heading"><div><p class="eyebrow">МОНИТОРИНГ ТЕПЛИЦЫ / Настройки</p><h1>Настройки</h1><p class="description">Редактирование порогов каждой зоны и применение правил Авто.</p></div><div class="heading-meta">ПРОЕКТНЫЙ КОНТУР<strong class="mono">03 зоны / 18 датчиков</strong></div></div>
+  <div class="notice"><svg class="icon" aria-hidden="true"><use href="assets/img/icons.svg#info"></use></svg><p><strong>Учебная система.</strong> Симулируемые показания, автоматическое и ручное управление виртуальными устройствами. Реального оборудования нет; пороги и сценарии учебные.</p></div>
   <noscript><p class="notice">JavaScript отключён. На узком экране используйте ссылки: <a href="index.html">Обзор системы</a> · <a href="zones.html">Зоны</a> · <a href="sensors.html">Датчики</a> · <a href="control.html">Управление</a> · <a href="alerts.html">Предупреждения</a> · <a href="analytics.html">Аналитика</a> · <a href="settings.html">Настройки</a> · <a href="event-log.html">Журнал событий</a> · </p></noscript>
-  <div class="toolbar"><label class="field">Настройки зоны<select data-zone-select aria-label="Настройки зоны"><option>Tomatoes · ZONE-01</option><option>Cucumbers · ZONE-02</option><option>Greens · ZONE-03</option></select></label></div>
+  <div class="toolbar"><label class="field">Настройки зоны<select data-zone-select aria-label="Настройки зоны"><option>Томаты · ZONE-01</option><option>Огурцы · ZONE-02</option><option>Зелень · ZONE-03</option></select></label></div>
   <form data-settings-form novalidate aria-label="Пороговые значения выбранной зоны">
    <div class="settings-grid">
     <section class="panel"><fieldset><legend>Пороговые значения зоны</legend><div class="form-grid">
-     <label class="field">Температура min, °C<input type="number" data-setting="temperature.min" placeholder="Загрузка…"></label>
-     <label class="field">Температура max, °C<input type="number" data-setting="temperature.max" placeholder="Загрузка…"></label>
-     <label class="field">Влажность воздуха min, %<input type="number" data-setting="humidity.min" placeholder="Загрузка…"></label>
-     <label class="field">Влажность воздуха max, %<input type="number" data-setting="humidity.max" placeholder="Загрузка…"></label>
-     <label class="field">Влажность почвы min, %<input type="number" data-setting="soil.min" placeholder="Загрузка…"></label>
-     <label class="field">Влажность почвы max, %<input type="number" data-setting="soil.max" placeholder="Загрузка…"></label>
-     <label class="field">Освещённость min, lux<input type="number" data-setting="light.min" placeholder="Загрузка…"></label>
+     <label class="field">Температура мин., °C<input type="number" data-setting="temperature.min" placeholder="Загрузка…"></label>
+     <label class="field">Температура макс., °C<input type="number" data-setting="temperature.max" placeholder="Загрузка…"></label>
+     <label class="field">Влажность воздуха мин., %<input type="number" data-setting="humidity.min" placeholder="Загрузка…"></label>
+     <label class="field">Влажность воздуха макс., %<input type="number" data-setting="humidity.max" placeholder="Загрузка…"></label>
+     <label class="field">Влажность почвы мин., %<input type="number" data-setting="soil.min" placeholder="Загрузка…"></label>
+     <label class="field">Влажность почвы макс., %<input type="number" data-setting="soil.max" placeholder="Загрузка…"></label>
+     <label class="field">Освещённость мин., lux<input type="number" data-setting="light.min" placeholder="Загрузка…"></label>
      <label class="field">Критическая вода, %<input type="number" data-setting="waterLevel.critical" placeholder="Загрузка…"></label>
-     <label class="field">CO₂ max, ppm<input type="number" data-setting="co2.max" placeholder="Загрузка…"></label>
-    </div><p class="helper">Учебные пороги, не универсальные агрономические нормы. Минимум должен быть меньше максимума. Сохранение пересчитывает Auto без нового измерения, в том числе на паузе.</p></fieldset></section>
+     <label class="field">CO₂ макс., ppm<input type="number" data-setting="co2.max" placeholder="Загрузка…"></label>
+    </div><p class="helper">Учебные пороги, не универсальные агрономические нормы. Минимум должен быть меньше максимума. Сохранение пересчитывает автоматическое управление без нового измерения, в том числе на паузе.</p></fieldset></section>
     <section class="panel"><h2>Как применяются пороги</h2>
-     <p class="helper">Полив: ON ниже soil.min, OFF от soil.max. Защита воды имеет приоритет.</p>
-     <p class="helper">Температура: Fan выше max, Heater ниже min; выключение с гистерезисом до 1 °C. Влажность: увлажнение ниже min, остановка с гистерезисом до 3 п. п., не более половины диапазона min/max.</p>
-     <p class="helper">Фитолампа: ON ниже light.min, OFF при min + 600 lux в пределах датчика. Форточка: ON выше CO₂ max, OFF при max − 100 ppm, но закрыта при обогреве.</p>
+     <p class="helper">Полив: насос включается ниже нижнего порога влажности почвы и выключается при достижении верхнего. Защита по уровню воды имеет приоритет.</p>
+     <p class="helper">Вентилятор включается выше верхнего порога температуры, обогреватель — ниже нижнего; выключение с гистерезисом до 1 °C. Увлажнитель включается ниже нижнего порога влажности и выключается с гистерезисом до 3 п. п., не более половины заданного диапазона.</p>
+     <p class="helper">Фитолампа включается ниже нижнего порога освещённости и выключается на 600 lux выше него, в пределах диапазона датчика. Форточка открывается выше верхнего порога CO₂ и закрывается на 100 ppm ниже него; при обогреве она закрыта.</p>
      <p class="helper">Глобальная скорость симуляции и подтверждаемый сброс расположены ниже формы зоны.</p>
     </section>
    </div>
@@ -52,13 +52,13 @@
    <h2>Симуляция и демонстрационные данные</h2>
    <div class="toolbar"><label class="field">Интервал симуляции<select data-simulation-interval aria-label="Интервал симуляции от 3 до 10 секунд"><option value="3000">3 с</option><option value="4000">4 с</option><option value="5000">5 с — по умолчанию</option><option value="6000">6 с</option><option value="7000">7 с</option><option value="8000">8 с</option><option value="9000">9 с</option><option value="10000">10 с</option><option data-current-interval hidden></option></select></label></div>
    <p class="helper">Применяется сразу ко всем зонам и сохраняется. Пауза и накопленная история не изменяются.</p>
-   <fieldset disabled class="section"><legend>Необязательная тема</legend><label class="field">Тема<select disabled aria-label="Тема"><option>Графитовая — текущая</option></select></label></fieldset>
-   <p class="helper section" id="reset-warning">Сброс удалит демонстрационные датчики, настройки, состояния устройств и сценариев, Alerts, Event Log и историю измерений. Будет восстановлена начальная модель. Чужие ключи localStorage не затрагиваются. Требуется отдельное подтверждение; отменить выполненный сброс нельзя.</p>
+   <p class="helper section">Оформление: графитовое.</p>
+   <p class="helper section" id="reset-warning">Сброс удалит демонстрационные датчики, настройки, состояния устройств и сценариев, предупреждения, журнал событий и историю измерений. Будет восстановлена начальная модель. Чужие ключи localStorage не затрагиваются. Требуется отдельное подтверждение; отменить выполненный сброс нельзя.</p>
    <div class="form-actions"><button class="button" type="button" data-reset-demo aria-describedby="reset-warning">Сбросить демонстрационные данные…</button></div>
    <p class="notice control-feedback section" role="status" data-application-settings-feedback>Скорость и сброс относятся ко всему приложению. Сброс выполняется только после подтверждения.</p>
   </section>
   </main>
-  <footer class="footer"><span>IoT Smart Greenhouse · учебный прототип</span><span>Этап 08 / Финальная проверка · учебная симуляция</span></footer>
+  <footer class="footer"><span>IoT Smart Greenhouse · Учебный проект</span><span>Учебная симуляция</span></footer>
  </div>
 </body>
 </html>

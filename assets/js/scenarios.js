@@ -21,7 +21,7 @@ export function buildScenarioReadings(state, zoneId, scenarioId) {
   const seed = createInitialState(state.createdAt).sensors.filter((s) => s.zoneId === zoneId);
   const values = Object.fromEntries(seed.map((s) => [s.type, s.value]));
   const gap = Math.min(1, (t.temperature.max - t.temperature.min) / 2);
-  // Stable release conditions make each demonstration independent of previous latches.
+  // Условия устойчивого восстановления делают демонстрацию независимой от ранее сработавших блокировок.
   values.temperature = Math.min(t.temperature.max - gap, Math.max(t.temperature.min + gap, values.temperature));
   values.soil = t.soil.max;
   const humidityBand = humidityRecovery(t.humidity);

@@ -18,18 +18,13 @@ test('public project documentation does not expose a local Windows user home pat
   }
 });
 
-test('all eight pages present the same prototype version and development stage', () => {
+test('all eight pages present the same final Russian educational labels', () => {
   const pages = ['index', 'zones', 'sensors', 'control', 'alerts', 'analytics', 'settings', 'event-log'];
-  const versions = new Set(); const stages = new Set();
   for (const page of pages) {
     const html = readFileSync(new URL(`../${page}.html`, import.meta.url), 'utf8');
-    const version = html.match(/PROTOTYPE v(\d+\.\d+)/);
-    assert.ok(version, `${page}: missing visible version`);
-    versions.add(version[1]);
-    const labels = [...html.matchAll(/этап\s+(\d+)/gi)];
-    assert.ok(labels.length >= 3, `${page}: sidebar, notice and footer identify the stage`);
-    for (const label of labels) stages.add(Number(label[1]));
+    assert.match(html, /<span>Учебный проект<\/span>/, page);
+    assert.match(html, /Центр управления/, page);
+    assert.match(html, /data-mode-indicator>Ручной<\/span>/, page);
+    assert.doesNotMatch(html, /PROTOTYPE|Этап\s*0?8|Финальная проверка|IoT CONTROL CENTER/i, page);
   }
-  assert.equal(versions.size, 1, `conflicting project versions: ${[...versions].join(', ')}`);
-  assert.equal(stages.size, 1, `conflicting stage labels: ${[...stages].join(', ')}`);
 });

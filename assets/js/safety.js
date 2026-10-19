@@ -1,6 +1,6 @@
 import { SENSOR_TYPES } from './data.js';
 
-// Shared trust check: automation must never make decisions from offline/invalid inputs.
+// Общая проверка достоверности: автоматика не использует недостоверные данные и показания отключённых датчиков.
 export function sensorBlockReason(state, zoneId, type) {
   const definition = SENSOR_TYPES.find((item) => item.type === type);
   const sensors = state.sensors.filter((sensor) => sensor.zoneId === zoneId && sensor.type === type);
@@ -15,7 +15,7 @@ export function sensorBlockReason(state, zoneId, type) {
   return null;
 }
 
-// Domain safety is independent of the DOM and applies to direct store commands too.
+// Защитная логика не зависит от DOM и действует также для прямых команд хранилищу состояния.
 export function pumpBlockReason(state, zoneId) {
   const issue = sensorBlockReason(state, zoneId, 'waterLevel');
   if (issue) return issue;
@@ -46,7 +46,7 @@ export function deviceBlockReason(state, device) {
   return null;
 }
 
-// Mutates only a candidate owned by the store, before validation/persistence/publication.
+// Изменяет только подготовленный хранилищем вариант состояния до проверки, сохранения и уведомления подписчиков.
 export function enforceDeviceSafety(state, timestamp, recoveryReason = null) {
   let changed = false;
   const messages = [];
@@ -67,7 +67,7 @@ export function enforceDeviceSafety(state, timestamp, recoveryReason = null) {
     if ((reason && device.isOn) || device.blockedReason !== reason) {
       if (reason) device.isOn = false;
       device.blockedReason = reason;
-      // Clearing an old blocker after an Auto ON must not erase its real command source.
+      // Снятие прежней блокировки после автоматического включения не должно затирать действительный источник команды.
       if (reason || !device.isOn) {
         device.source = 'system';
         device.changedAt = timestamp;

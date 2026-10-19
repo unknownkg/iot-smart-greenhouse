@@ -1,3 +1,4 @@
+import { displayText, zoneLabel, eventLabel } from './presentation.js';
 import { EVENT_SOURCES } from './events.js';
 import { SENSOR_TYPES, DEVICE_TYPES } from './data.js';
 
@@ -7,7 +8,7 @@ const number = (value) => new Intl.NumberFormat('ru-RU', { maximumFractionDigits
 const sourceName = { operator: 'Оператор', auto: 'Автоматика', safety: 'Защита', scenario: 'Сценарий', settings: 'Настройки', system: 'Система' };
 const badge = (label, color) => `<span class="badge badge-${color}">${escape(label)}</span>`;
 const newest = (a, b) => b.timestamp.localeCompare(a.timestamp) || Number(b.id.split('-')[1]) - Number(a.id.split('-')[1]);
-const zoneName = (state, id) => state.zones.find((zone) => zone.id === id)?.name ?? 'Система';
+const zoneName = (state, id) => zoneLabel(state.zones.find((zone) => zone.id === id)?.name ?? 'Система');
 
 export function filterAlerts(state, { zoneId = '', severity = '', status = '' } = {}) {
   return state.alerts.filter((a) => (!zoneId || a.zoneId === zoneId) && (!severity || a.severity === severity) && (!status || a.status === status))
@@ -27,11 +28,11 @@ export function alertRows(state, filters = {}) {
     const sensor = state.sensors.find((s) => s.id === alert.sensorId);
     const device = state.devices.find((d) => d.id === alert.deviceId);
     const object = device ? DEVICE_TYPES.find((d) => d.type === device.type).name : SENSOR_TYPES.find((s) => s.type === sensor.type).name;
-    return `<tr><td>${badge(alert.severity === 'critical' ? 'Critical' : 'Warning', alert.severity === 'critical' ? 'red' : 'yellow')}</td>
+    return `<tr><td>${badge(alert.severity === 'critical' ? 'Критическое' : 'Предупреждение', alert.severity === 'critical' ? 'red' : 'yellow')}</td>
       <td>${escape(zoneName(state, alert.zoneId))}<br><small>${escape(object)}</small><br><small class="mono">${escape(alert.deviceId ?? alert.sensorId)}</small></td>
-      <td class="audit-description"><strong>${escape(alert.message)}</strong><p>${escape(alert.reason)}</p></td>
+      <td class="audit-description"><strong>${escape(displayText(alert.message))}</strong><p>${escape(displayText(alert.reason))}</p></td>
       <td>${alert.value === null ? 'Нет достоверного' : `${number(alert.value)} ${escape(sensor.unit)}`}<br><small class="muted">Порог: ${alert.threshold === null ? '—' : `${number(alert.threshold)} ${escape(sensor.unit)}`}</small></td>
-      <td>${badge(alert.status === 'open' ? 'Open · активно' : 'Resolved · устранено', alert.status === 'open' ? alert.severity === 'critical' ? 'red' : 'yellow' : 'green')}</td>
+      <td>${badge(alert.status === 'open' ? 'Активно' : 'Устранено', alert.status === 'open' ? alert.severity === 'critical' ? 'red' : 'yellow' : 'green')}</td>
       <td><time datetime="${alert.createdAt}">${time(alert.createdAt)}</time><br><small class="muted">${alert.resolvedAt ? `Устранено: ${time(alert.resolvedAt)}` : 'Ожидает устранения причины'}</small></td></tr>`;
   }).join('');
 }
@@ -41,8 +42,8 @@ export function eventRows(state, filters = {}, limit = 30) {
   if (!events.length) return '<tr><td class="table-empty" colspan="5">Нет событий по выбранным фильтрам. Журнал фиксирует реальные действия и переходы состояний.</td></tr>';
   return events.map((event) => `<tr><td><time datetime="${event.timestamp}">${time(event.timestamp)}</time></td>
     <td>${escape(zoneName(state, event.zoneId))}</td><td>${badge(sourceName[event.source], event.source === 'safety' ? 'red' : event.source === 'auto' ? 'green' : 'cyan')}</td>
-    <td>${escape(event.objectName)}<br><small class="muted mono">${escape(event.type)}</small></td>
-    <td class="audit-description"><strong>${escape(event.message)}</strong><p>${escape(event.reason)}</p>${event.previousState !== null || event.newState !== null ? `<small class="muted">${escape(event.previousState ?? '—')} → ${escape(event.newState ?? '—')}</small>` : ''}</td></tr>`).join('');
+    <td>${escape(displayText(event.objectName))}<br><small class="muted mono">${escape(eventLabel(event.type))}</small></td>
+    <td class="audit-description"><strong>${escape(displayText(event.message))}</strong><p>${escape(displayText(event.reason))}</p>${event.previousState !== null || event.newState !== null ? `<small class="muted">${escape(displayText(event.previousState ?? '—'))} → ${escape(displayText(event.newState ?? '—'))}</small>` : ''}</td></tr>`).join('');
 }
 
 export function recentEvents(state, limit = 5) {
@@ -50,8 +51,8 @@ export function recentEvents(state, limit = 5) {
   if (!events.length) return '<p class="helper">Событий пока нет. Здесь появятся реальные действия и изменения предупреждений.</p>';
   return `<div class="event-feed">${events.map((event) => {
     const alert = state.alerts.find((a) => a.id === event.objectId);
-    const level = alert ? badge(alert.severity === 'critical' ? 'Critical' : 'Warning', alert.severity === 'critical' ? 'red' : 'yellow') : '';
-    return `<article class="event-item"><div>${level}${badge(sourceName[event.source], event.source === 'safety' ? 'red' : 'cyan')}<small class="muted">${escape(zoneName(state, event.zoneId))} · ${time(event.timestamp)}</small></div><p>${escape(event.message)}</p><small class="muted">${escape(event.reason)}</small></article>`;
+    const level = alert ? badge(alert.severity === 'critical' ? 'Критическое' : 'Предупреждение', alert.severity === 'critical' ? 'red' : 'yellow') : '';
+    return `<article class="event-item"><div>${level}${badge(sourceName[event.source], event.source === 'safety' ? 'red' : 'cyan')}<small class="muted">${escape(zoneName(state, event.zoneId))} · ${time(event.timestamp)}</small></div><p>${escape(displayText(event.message))}</p><small class="muted">${escape(displayText(event.reason))}</small></article>`;
   }).join('')}</div>`;
 }
 
@@ -59,12 +60,12 @@ export function recentAlerts(state, limit = 3) {
   const resolved = state.alerts.filter((a) => a.status === 'resolved')
     .sort((a, b) => b.resolvedAt.localeCompare(a.resolvedAt) || Number(b.id.slice(6)) - Number(a.id.slice(6)));
   const alerts = [...filterAlerts(state, { status: 'open' }), ...resolved].slice(0, limit);
-  if (!alerts.length) return '<p class="helper">Предупреждений пока нет. Здесь будут реальные Alerts, отдельно от журнала событий.</p>';
+  if (!alerts.length) return '<p class="helper">Предупреждений пока нет. Здесь будут предупреждения по данным модели, отдельно от журнала событий.</p>';
   return `<div class="event-feed">${alerts.map((alert) => `<article class="event-item"><div>
-    ${badge(alert.severity === 'critical' ? 'Critical' : 'Warning', alert.severity === 'critical' ? 'red' : 'yellow')}
-    ${badge(alert.status === 'open' ? 'Open · активно' : 'Resolved · устранено', alert.status === 'open' ? 'yellow' : 'green')}
+    ${badge(alert.severity === 'critical' ? 'Критическое' : 'Предупреждение', alert.severity === 'critical' ? 'red' : 'yellow')}
+    ${badge(alert.status === 'open' ? 'Активно' : 'Устранено', alert.status === 'open' ? 'yellow' : 'green')}
     <strong>${escape(zoneName(state, alert.zoneId))}</strong><small class="muted">${time(alert.resolvedAt ?? alert.createdAt)}</small></div>
-    <p>${escape(alert.message)}</p><small class="muted">${escape(alert.reason)}</small></article>`).join('')}</div>`;
+    <p>${escape(displayText(alert.message))}</p><small class="muted">${escape(displayText(alert.reason))}</small></article>`).join('')}</div>`;
 }
 
 export function notificationModel(state) {
@@ -78,7 +79,7 @@ export function renderNotifications(state, link) {
   const model = notificationModel(state);
   link.className = `badge notifications-link badge-${model.critical ? 'red' : model.count ? 'yellow' : 'green'}`;
   link.textContent = `Уведомления · ${model.count}`;
-  link.setAttribute('aria-label', `Активные предупреждения: ${model.count}. Critical: ${model.critical}; Warning: ${model.warning}. Открыть страницу предупреждений.`);
+  link.setAttribute('aria-label', `Активные предупреждения: ${model.count}. Критических: ${model.critical}; Предупреждений: ${model.warning}. Открыть страницу предупреждений.`);
 }
 
 export function bindMonitoringViews(store, root) {
@@ -86,7 +87,7 @@ export function bindMonitoringViews(store, root) {
   const eventBody = root.querySelector('[data-event-rows]');
   if (!alertBody && !eventBody) return null;
   const zone = root.querySelector('[data-filter-zone]');
-  zone.innerHTML = '<option value="">Все зоны</option>' + store.getState().zones.map((z) => `<option value="${z.id}">${escape(z.name)}</option>`).join('');
+  zone.innerHTML = '<option value="">Все зоны</option>' + store.getState().zones.map((z) => `<option value="${z.id}">${escape(zoneLabel(z.name))}</option>`).join('');
   const severity = root.querySelector('[data-filter-severity]');
   const status = root.querySelector('[data-filter-status]');
   const source = root.querySelector('[data-filter-source]');

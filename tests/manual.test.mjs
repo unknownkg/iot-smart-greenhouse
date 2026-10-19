@@ -211,8 +211,8 @@ test('actuator effects respect pause, one step, ranges and history persistence',
 test('Control renders usable manual switches and escaped metadata; Zones counts active devices', () => {
   const f = fixture(); f.store.setDeviceState(f.device('pump').id, true);
   const html = deviceCards(f.store.getState(), 'ZONE-01');
-  assert.match(html, /ON/); assert.match(html, /Оператор/); assert.match(html, /18\.10\.2026/);
-  assert.match(zoneCards(f.store.getState(), true), /1 \/ 6 устройств ON/);
+  assert.match(html, /Включено/); assert.match(html, /Оператор/); assert.match(html, /18\.10\.2026/);
+  assert.match(zoneCards(f.store.getState(), true), /Включено 1 из 6/);
 });
 
 test('Control disables blocked ON but renders the reason safely as text', () => {
@@ -221,7 +221,7 @@ test('Control disables blocked ON but renders the reason safely as text', () => 
   state.devices.find((d) => d.zoneId === 'ZONE-01' && d.type === 'heater').blockedReason = '<img onerror="bad()">';
   const html = deviceCards(state, 'ZONE-01');
   assert.equal((html.match(/ disabled/g) ?? []).length, 1);
-  assert.match(html, /BLOCKED/);
+  assert.match(html, /Блокировка/);
   assert.match(html, /&lt;img/);
   assert.doesNotMatch(html, /<img/);
 });

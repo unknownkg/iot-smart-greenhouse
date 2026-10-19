@@ -1,5 +1,5 @@
-// Global settings share the existing store and simulator; no independent controller or timer.
-export const RESET_WARNING = 'Сбросить демонстрационные данные IoT Smart Greenhouse? Будут сброшены датчики, настройки, устройства, сценарии, Alerts, Event Log и история измерений. Несохранённые правки порогов будут удалены. Данные других приложений не затрагиваются. Это действие нельзя отменить.';
+// Общие настройки используют существующее хранилище состояния и симулятор без отдельного контроллера или таймера.
+export const RESET_WARNING = 'Сбросить демонстрационные данные IoT Smart Greenhouse? Будут сброшены датчики, настройки, устройства, сценарии, предупреждения, журнал событий и история измерений. Несохранённые правки порогов будут удалены. Данные других приложений не затрагиваются. Это действие нельзя отменить.';
 
 export function createApplicationSettings(store, simulator, { confirmReset } = {}) {
   return Object.freeze({

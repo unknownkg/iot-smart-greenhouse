@@ -9,7 +9,7 @@ import { syncAlerts } from './alerts.js';
 export function createStore(options = {}) {
   let { state, status } = loadState(options);
   const subscribers = new Set();
-  // Never overwrite malformed/incompatible saved data without an explicit reset.
+  // Не перезаписываем повреждённые или несовместимые сохранённые данные без явного сброса.
   let writeBlocked = ['invalid-json', 'incompatible-schema', 'invalid-state', 'read-failed'].includes(status.issue);
   const snapshot = () => structuredClone(state);
   const notify = () => subscribers.forEach((listener) => listener(snapshot(), { ...status }));
@@ -109,7 +109,7 @@ export function createStore(options = {}) {
   const api = Object.freeze({
     getState: snapshot,
     getStatus: () => ({ ...status }),
-    // Used on BFCache restoration: another page may have saved newer data/pause.
+    // Используется при возврате из BFCache: другая страница могла сохранить более свежие данные или состояние паузы.
     reload() {
       const loaded = loadState(options);
       state = loaded.state;
@@ -162,7 +162,7 @@ export function createStore(options = {}) {
       const result = commit(next);
       return { ...result, message: result.ok ? `Команда ${isOn ? 'ON' : 'OFF'} выполнена${result.persisted ? '.' : ' в памяти; сохранить не удалось.'}` : 'Команда отклонена: некорректные данные.' };
     },
-    // Internal monitoring API; changing availability is not a new measurement.
+    // Внутренний интерфейс мониторинга: изменение доступности не является новым измерением.
     setSensorStatus(sensorId, sensorStatus) {
       if (!['online', 'offline'].includes(sensorStatus)) return { ok: false, issue: 'invalid-status' };
       const next = snapshot();
@@ -171,7 +171,7 @@ export function createStore(options = {}) {
       sensor.status = sensorStatus;
       return commit(next);
     },
-    // Validated transaction used by the per-zone settings form.
+    // Проверяемая транзакция формы настроек выбранной зоны.
     updateZoneSettings(zoneId, settings) {
       if (typeof zoneId !== 'string' || !Object.hasOwn(state.settings.zones, zoneId)) return { ok: false, issue: 'unknown-zone' };
       const next = snapshot();
@@ -233,7 +233,7 @@ export function createStore(options = {}) {
             sensor.status = 'offline';
             continue;
           }
-          // Reject a Manual frame before domain comparisons can coerce an invalid value.
+          // Отклоняем кадр ручного ввода до сравнений, способных привести недопустимое значение к другому типу.
           return { ok: false, issue: 'invalid-state', ...preserveMeasurementSafety(measurements, timestamp) };
         }
         sensor.value = measurement.value;
@@ -246,7 +246,7 @@ export function createStore(options = {}) {
       next.history = next.history.slice(-HISTORY_LIMIT);
       const result = commit(next, context);
       if (result.ok) return result;
-      // Reject the history frame, but never discard independently trusted safety inputs.
+      // Отклоняем срез истории, сохраняя независимо подтверждённые защитные входные данные.
       return { ...result, ...preserveMeasurementSafety(measurements, timestamp) };
     },
     reset() {

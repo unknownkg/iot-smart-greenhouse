@@ -30,7 +30,7 @@ test('zone, availability and search filters combine without mutating readings or
 test('Sensors renders filtered actual values, times, offline and an explicit empty table row', () => {
   const state = initial(); state.sensors[0].value = 31; state.sensors[0].status = 'offline';
   const html = sensorRows(state, undefined, { query: 'temperature', zoneId: 'ZONE-01', status: 'offline' });
-  assert.match(html, /31/); assert.match(html, /offline/); assert.match(html, /2026-10-19T12:00:00.000Z/);
+  assert.match(html, /31/); assert.match(html, /Нет связи/); assert.match(html, /2026-10-19T12:00:00.000Z/);
   assert.equal((html.match(/<tr>/g) ?? []).length, 1); assert.doesNotMatch(html, /ZONE-02-S/);
   assert.match(sensorRows(state, undefined, { query: 'no such sensor' }), /Нет датчиков/);
 });
@@ -40,10 +40,10 @@ test('Zones searches names, IDs and crop labels while retaining the complete ori
   for (const query of ['  tomatoes ', 'ZONE-01', 'ТОМАТЫ']) assert.deepEqual(filterZones(state, query).map((z) => z.id), ['ZONE-01']);
   assert.equal(filterZones(state, '').length, 3); assert.equal(filterZones(state, 'no zone').length, 0);
   const html = zoneCards(state, true, {}, 'cucumbers');
-  assert.match(html, /Cucumbers/); assert.doesNotMatch(html, /Tomatoes/); assert.match(html, /Risk Score/);
-  assert.match(html, /data-zone-id="ZONE-02"/); // Stable color identity even when this is the only visible card.
+  assert.match(html, /Огурцы/); assert.doesNotMatch(html, /Томаты/); assert.match(html, /Индекс риска/);
+  assert.match(html, /data-zone-id="ZONE-02"/); // Цвет зоны сохраняется, даже если видна только её карточка.
   assert.match(zoneCards(state, true, {}, 'no zone'), /Нет зон/); assert.deepEqual(state, before);
-  assert.match(sensorRows(state, 'ZONE-01'), /Tomatoes/); // Detail selection is independent of card search.
+  assert.match(sensorRows(state, 'ZONE-01'), /Томаты/); // Выбор подробных показателей не зависит от поиска карточек.
 });
 
 test('a new store snapshot immediately changes filter results without any writes from filtering', () => {

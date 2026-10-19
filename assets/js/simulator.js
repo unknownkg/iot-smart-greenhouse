@@ -1,7 +1,7 @@
 import { SENSOR_TYPES } from './data.js';
 import { deviceBlockReason } from './safety.js';
 
-// Natural drift plus small educational actuator effects, never device commands.
+// Естественные колебания и небольшие учебные эффекты устройств; команды устройствам здесь не формируются.
 const STEPS = Object.freeze({ temperature: 0.2, humidity: 0.5, soil: 0.2, light: 200, co2: 8 });
 export function simulateReadings(state, { random = Math.random } = {}) {
   const active = (zoneId, type) => state.devices.some((device) => device.zoneId === zoneId && device.type === type

@@ -1,10 +1,10 @@
 export const SCHEMA_VERSION = 3;
-// 240 whole-greenhouse samples: about 20 minutes at the default 5 second interval.
+// 240 срезов всей теплицы — около 20 минут при интервале 5 секунд.
 export const HISTORY_LIMIT = 240;
 export const ALERT_LIMIT = 200;
 export const EVENT_LIMIT = 300;
 
-// Shared release band for humidity Auto, Alerts and restoration, including narrow ranges.
+// Общая граница восстановления влажности для автоматики, предупреждений и восстановления состояния, включая узкие диапазоны.
 export function humidityRecovery({ min, max }) {
   const gap = Math.min(3, (max - min) / 2);
   const middle = (min + max) / 2;
@@ -35,7 +35,7 @@ export const ZONE_DEFINITIONS = Object.freeze([
   { id: 'ZONE-03', name: 'Greens', crop: 'Зелень' },
 ].map(Object.freeze));
 
-// Educational examples, not universal crop thresholds or physical measurements.
+// Учебные примеры; это не универсальные агрономические пороги и не реальные измерения.
 export function createInitialState(timestamp = new Date().toISOString()) {
   const readings = [
     [24.8, 67, 42, 18400, 820, 72],
@@ -79,7 +79,7 @@ export function createInitialState(timestamp = new Date().toISOString()) {
         co2: { max: 1500 },
       }])),
     },
-    // One durable counter prevents ID reuse after retention or page reload.
+    // Единый сохраняемый счётчик предотвращает повторное использование ID после удаления старых записей или перезагрузки.
     audit: { nextId: 1 },
     alerts: [],
     events: [],
