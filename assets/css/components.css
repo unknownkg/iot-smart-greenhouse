@@ -109,3 +109,6 @@ tbody tr:hover td:not(.table-empty) { background: rgb(255 255 255 / 3%); }
 .device-card .badge { max-width: 100%; white-space: normal; overflow-wrap: anywhere; }
 .control-feedback[data-outcome='error'] { border-color: rgb(243 147 147 / 35%); color: var(--red); }
 .control-feedback[data-outcome='success'] { border-color: var(--green-border); color: var(--green); }
+.field-error { color: var(--red); font-size: 12px; overflow-wrap: anywhere; }
+.field [aria-invalid='true'] { border-color: var(--red); }
+.control-feedback { overflow-wrap: anywhere; }

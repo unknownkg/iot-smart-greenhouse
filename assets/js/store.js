@@ -1,6 +1,8 @@
 import { loadState, saveState, resetData, validateState } from './storage.js';
-import { HISTORY_LIMIT } from './data.js';
+import { HISTORY_LIMIT, SENSOR_TYPES } from './data.js';
 import { deviceBlockReason, enforceDeviceSafety } from './safety.js';
+import { evaluateAutomation } from './automation.js';
+import { buildScenarioReadings } from './scenarios.js';
 
 export function createStore(options = {}) {
   let { state, status } = loadState(options);
@@ -11,26 +13,62 @@ export function createStore(options = {}) {
   const notify = () => subscribers.forEach((listener) => listener(snapshot(), { ...status }));
   const now = options.now ?? (() => new Date().toISOString());
   const recoveryReason = () => writeBlocked ? 'Сохранённая модель не восстановлена. Управление заблокировано до сброса данных.' : null;
-  function commit(next, safetyNotice = null) {
-    const safety = enforceDeviceSafety(next, now(), recoveryReason());
+  function reconcileDevices(next, timestamp) {
+    const before = enforceDeviceSafety(next, timestamp, recoveryReason());
+    if (!recoveryReason()) {
+      for (const zone of next.zones.filter((item) => item.mode === 'auto')) {
+        const decisions = evaluateAutomation(next, zone.id);
+        for (const device of next.devices.filter((item) => item.zoneId === zone.id)) {
+          if (device.isOn !== decisions[device.type].isOn) {
+            device.isOn = decisions[device.type].isOn;
+            device.source = 'automation';
+            device.changedAt = timestamp;
+          }
+        }
+      }
+    }
+    const after = enforceDeviceSafety(next, timestamp, recoveryReason());
+    return { message: after.message || (before.message.includes('восстановлен конфликт') ? before.message : '') };
+  }
+  function commit(next) {
+    const safety = reconcileDevices(next, now());
     if (!validateState(next).ok) return { ok: false, issue: 'invalid-state' };
     const saved = writeBlocked ? { ok: false, issue: status.issue } : saveState(next, options);
     state = saved.ok ? saved.state : next;
     status = { ...status, source: saved.ok ? 'saved' : 'memory', persistent: saved.ok, issue: saved.ok ? null : saved.issue,
-      safetyMessage: safetyNotice || safety.message || null };
+      safetyMessage: safety.message || null };
     notify();
     return { ok: true, persisted: saved.ok };
   }
   function checkLoadedSafety() {
     const next = snapshot();
-    const safety = enforceDeviceSafety(next, now(), recoveryReason());
-    if (safety.changed) {
-      commit(next, safety.message || 'Восстановлено безопасное состояние устройств.');
+    reconcileDevices(next, now());
+    if (JSON.stringify(next.devices) !== JSON.stringify(state.devices)) commit(next);
+  }
+  function preserveMeasurementSafety(measurements, timestamp) {
+    const safe = snapshot();
+    let hazard = false;
+    for (const sensor of safe.sensors.filter((item) => item.status === 'online')) {
+      if (timestamp < sensor.lastUpdatedAt || (safe.simulation.lastTickAt && timestamp < safe.simulation.lastTickAt)) continue;
+      const patches = measurements.filter((item) => item?.id === sensor.id);
+      if (!patches.length) continue;
+      const range = SENSOR_TYPES.find((item) => item.type === sensor.type);
+      const value = patches[0].value;
+      const invalid = patches.length !== 1 || !Number.isFinite(value) || value < range.min || value > range.max;
+      const automatic = safe.zones.find((zone) => zone.id === sensor.zoneId).mode === 'auto';
+      const unsafeWater = sensor.type === 'waterLevel' && (invalid || value <= safe.settings.zones[sensor.zoneId].waterLevel.critical);
+      if (!automatic && !unsafeWater) continue;
+      hazard = true;
+      if (invalid) sensor.status = 'offline';
+      else { sensor.value = value; sensor.lastUpdatedAt = timestamp; }
     }
+    if (!hazard) return {};
+    const result = commit(safe);
+    return { safetyApplied: result.ok, persisted: result.persisted };
   }
   checkLoadedSafety();
 
-  return Object.freeze({
+  const api = Object.freeze({
     getState: snapshot,
     getStatus: () => ({ ...status }),
     // Used on BFCache restoration: another page may have saved newer data/pause.
@@ -54,18 +92,26 @@ export function createStore(options = {}) {
       return () => subscribers.delete(listener);
     },
     setZoneMode(zoneId, mode) {
-      if (mode !== 'manual') return { ok: false, message: 'Auto будет доступен на следующем этапе.' };
+      if (!['manual', 'auto'].includes(mode)) return { ok: false, message: 'Неизвестный режим.' };
       const next = snapshot();
       const zone = next.zones.find((item) => item.id === zoneId);
       if (!zone) return { ok: false, message: 'Неизвестная зона.' };
-      zone.mode = 'manual';
-      return { ...commit(next), message: 'Режим Manual установлен.' };
+      if (zone.mode === mode) return { ok: true, persisted: status.persistent, message: 'Режим уже установлен.' };
+      if (mode === 'manual') {
+        for (const device of next.devices.filter((item) => item.zoneId === zoneId && item.isOn)) {
+          device.isOn = false; device.source = 'manual'; device.changedAt = now();
+        }
+      }
+      zone.mode = mode;
+      const result = commit(next);
+      return { ...result, message: result.ok ? `Режим ${mode === 'auto' ? 'Auto: правила применены' : 'Manual: устройства выключены'}${result.persisted ? '.' : ' в памяти; сохранить не удалось.'}` : 'Режим не изменён: некорректные данные.' };
     },
     setDeviceState(deviceId, isOn) {
       if (typeof isOn !== 'boolean') return { ok: false, message: 'Состояние устройства должно быть ON или OFF.' };
       const next = snapshot();
       const device = next.devices.find((item) => item.id === deviceId);
       if (!device) return { ok: false, message: 'Неизвестное устройство.' };
+      if (next.zones.find((zone) => zone.id === device.zoneId).mode === 'auto') return { ok: false, message: 'Auto управляет устройствами. Для ручной команды выберите Manual.' };
       const reason = recoveryReason() ?? deviceBlockReason(next, device);
       if (isOn && reason) return { ok: false, message: reason };
       if (device.isOn === isOn) return { ok: true, persisted: status.persistent, message: 'Состояние уже установлено.' };
@@ -84,7 +130,7 @@ export function createStore(options = {}) {
       sensor.status = sensorStatus;
       return commit(next);
     },
-    // Internal API for the future settings editor.
+    // Validated transaction used by the per-zone settings form.
     updateZoneSettings(zoneId, settings) {
       if (!Object.hasOwn(state.settings.zones, zoneId)) return { ok: false, issue: 'unknown-zone' };
       const next = snapshot();
@@ -100,21 +146,32 @@ export function createStore(options = {}) {
       next.simulation.paused = paused;
       return commit(next);
     },
+    applyScenario(zoneId, scenarioId) {
+      const input = buildScenarioReadings(state, zoneId, scenarioId);
+      if (!input.ok) return input;
+      const result = api.recordMeasurements(input.measurements, now());
+      const mode = state.zones.find((zone) => zone.id === zoneId).mode;
+      return { ...result, message: result.ok ? `Учебный сценарий «${input.name}» применён. ${mode === 'auto' ? 'Auto пересчитан' : 'Manual сохранён: устройства включаются оператором'}${result.persisted ? '.' : ' в памяти; сохранить не удалось.'}` : 'Сценарий не применён: проверьте показания и время измерений.' };
+    },
     recordMeasurements(measurements, timestamp) {
       if (!Array.isArray(measurements) || typeof timestamp !== 'string' || !Number.isFinite(Date.parse(timestamp))
         || new Date(timestamp).toISOString() !== timestamp) return { ok: false, issue: 'invalid-measurements' };
       const online = state.sensors.filter((sensor) => sensor.status === 'online');
       if (measurements.length !== online.length || new Set(measurements.map((item) => item?.id)).size !== online.length
         || measurements.some((item) => !item || !online.some((sensor) => sensor.id === item.id))) {
-        return { ok: false, issue: 'invalid-measurements' };
+        return { ok: false, issue: 'invalid-measurements', ...preserveMeasurementSafety(measurements, timestamp) };
       }
       if (!online.length) return { ok: true, updated: 0, persisted: status.persistent };
       if (online.some((sensor) => Date.parse(timestamp) < Date.parse(sensor.lastUpdatedAt))
-        || (state.simulation.lastTickAt && timestamp < state.simulation.lastTickAt)) return { ok: false, issue: 'stale-time' };
+        || (state.simulation.lastTickAt && timestamp < state.simulation.lastTickAt)) {
+        return { ok: false, issue: 'stale-time', ...preserveMeasurementSafety(measurements, timestamp) };
+      }
       const next = snapshot();
       for (const measurement of measurements) {
         const sensor = next.sensors.find((item) => item.id === measurement.id);
-        if (sensor.type === 'waterLevel' && (!Number.isFinite(measurement.value) || measurement.value < 0 || measurement.value > 100)) {
+        const range = SENSOR_TYPES.find((item) => item.type === sensor.type);
+        const automatic = next.zones.find((zone) => zone.id === sensor.zoneId).mode === 'auto';
+        if ((sensor.type === 'waterLevel' || automatic) && (!Number.isFinite(measurement.value) || measurement.value < range.min || measurement.value > range.max)) {
           sensor.status = 'offline';
           continue;
         }
@@ -128,24 +185,8 @@ export function createStore(options = {}) {
       next.history = next.history.slice(-HISTORY_LIMIT);
       const result = commit(next);
       if (result.ok) return result;
-      // A rejected frame must not cancel an independently received water hazard.
-      // Keep other readings/history transactional, but publish a valid safety-only update.
-      const safe = snapshot();
-      let waterHazard = false;
-      for (const measurement of measurements) {
-        const sensor = safe.sensors.find((item) => item.id === measurement.id);
-        if (sensor.type !== 'waterLevel') continue;
-        const invalid = !Number.isFinite(measurement.value) || measurement.value < 0 || measurement.value > 100;
-        if (!invalid && measurement.value > safe.settings.zones[sensor.zoneId].waterLevel.critical) continue;
-        waterHazard = true;
-        if (invalid) sensor.status = 'offline';
-        else { sensor.value = measurement.value; sensor.lastUpdatedAt = timestamp; }
-      }
-      if (waterHazard) {
-        const safetyResult = commit(safe);
-        return { ...result, safetyApplied: safetyResult.ok, persisted: safetyResult.persisted };
-      }
-      return result;
+      // Reject the history frame, but never discard independently trusted safety inputs.
+      return { ...result, ...preserveMeasurementSafety(measurements, timestamp) };
     },
     reset() {
       const result = resetData(options);
@@ -159,4 +200,5 @@ export function createStore(options = {}) {
       return { ok: result.ok, issue: result.issue ?? result.status?.issue ?? null };
     },
   });
+  return api;
 }

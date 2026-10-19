@@ -143,13 +143,14 @@ test('heater/fan rejects the second ON in either order and permits recovery afte
   }
 });
 
-test('Auto cannot be enabled, restored Auto is inactive and can explicitly return to Manual', () => {
+test('restored Auto rejects manual commands and can explicitly return to safe Manual', () => {
   const state = createInitialState(FIRST); state.zones[0].mode = 'auto'; state.devices[0].isOn = true;
   const f = fixture(state);
-  assert.equal(f.device('pump').isOn, false);
+  assert.equal(f.device('pump').isOn, true);
   assert.equal(f.store.setDeviceState(f.device('pump').id, true).ok, false);
-  assert.equal(f.store.setZoneMode('ZONE-01', 'auto').ok, false);
+  assert.equal(f.store.setZoneMode('ZONE-01', 'auto').ok, true);
   assert.equal(f.store.setZoneMode('ZONE-01', 'manual').ok, true);
+  assert.equal(f.device('pump').isOn, false);
   assert.equal(f.store.setDeviceState(f.device('pump').id, true).ok, true);
 });
 

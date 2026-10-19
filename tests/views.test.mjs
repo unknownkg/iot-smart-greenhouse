@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createInitialState } from '../assets/js/data.js';
 import { buildDashboardModel, zoneCards, sensorRows, deviceCards } from '../assets/js/views.js';
+import * as views from '../assets/js/views.js';
+import { createStore } from '../assets/js/store.js';
 
 const state = () => createInitialState('2026-10-18T12:00:00.000Z');
 
@@ -43,4 +45,24 @@ test('control renders six manual switches for the selected zone only', () => {
   assert.equal((cards.match(/aria-checked="false"/g) ?? []).length, 6);
   assert.match(cards, /ZONE-02-D-pump/);
   assert.doesNotMatch(cards, /ZONE-01-D/);
+});
+
+test('Auto cards disable all manual toggles including ON devices and explain real decisions', () => {
+  const data = state(); data.zones[0].mode = 'auto'; data.sensors[0].value = 30; data.savedAt = data.createdAt;
+  const store = createStore({ storage: { getItem: () => JSON.stringify(data), setItem() {} }, now: () => data.createdAt });
+  const cards = deviceCards(store.getState(), 'ZONE-01');
+  assert.equal((cards.match(/ disabled/g) ?? []).length, 6);
+  assert.match(cards, /Автоматика/); assert.doesNotMatch(cards, /не запущена/);
+  assert.match(cards, /Auto: температура 30/);
+  assert.match(cards, /ON · включено/);
+});
+
+test('Dashboard distinguishes Manual, Auto and Mixed; zone cards show each mode', () => {
+  assert.equal(typeof views.modeLabel, 'function');
+  const data = state();
+  assert.equal(views.modeLabel(data), 'Manual');
+  data.zones[0].mode = 'auto'; assert.equal(views.modeLabel(data), 'Mixed');
+  const cards = zoneCards(data);
+  assert.match(cards, /Auto/); assert.match(cards, /Manual/);
+  data.zones.forEach((zone) => { zone.mode = 'auto'; }); assert.equal(views.modeLabel(data), 'Auto');
 });

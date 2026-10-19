@@ -3,7 +3,7 @@ import { createStore } from './store.js';
 import { renderDataPage } from './views.js';
 import { createSimulator } from './simulator.js';
 
-// Stage 4: one simulator plus store-backed Manual controls; Auto is not implemented.
+// Stage 5: one simulator; store applies safety and Auto before publishing each update.
 initNavigation();
 const store = createStore();
 const simulator = createSimulator(store);
